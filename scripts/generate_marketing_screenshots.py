@@ -89,7 +89,10 @@ MAC_MARKETING = [
     ),
     (
         "06_settings",
-        {"headline": "Private by default", "subheadline": "Human stays in control. No autopublish for sensitive content."},
+        {
+            "headline": "Private by default",
+            "subheadline": "Human stays in control. No autopublish for sensitive content.",
+        },
     ),
 ]
 
