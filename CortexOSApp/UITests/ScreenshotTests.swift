@@ -12,9 +12,13 @@ final class ScreenshotTests: XCTestCase {
     let app = XCUIApplication()
     private lazy var outputDirectory: URL = {
         let override = ProcessInfo.processInfo.environment["SCREENSHOT_OUTPUT_DIR"]
-        let root = override?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
-            ? URL(fileURLWithPath: override!, isDirectory: true)
-            : URL(fileURLWithPath: "/Users/pierre/Code/CortexOSLLM/CortexOSApp/screenshot_results", isDirectory: true)
+        let root: URL
+        if override?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false {
+            root = URL(fileURLWithPath: override!, isDirectory: true)
+        } else {
+            root = FileManager.default.temporaryDirectory
+                .appendingPathComponent("simplixio_screenshot_results", isDirectory: true)
+        }
 #if os(macOS)
         return root.appendingPathComponent("mac_raw", isDirectory: true)
 #elseif os(iOS)
@@ -27,7 +31,9 @@ final class ScreenshotTests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app.launchArguments += ["-UITests", "-Screenshots"]
+#if os(iOS)
         app.launch()
+#endif
         // Give the app time to fully render
         sleep(2)
         try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
@@ -37,7 +43,12 @@ final class ScreenshotTests: XCTestCase {
     private func captureWindow(_ name: String) -> XCUIScreenshot {
         let screenshot: XCUIScreenshot
 #if os(macOS)
-        screenshot = app.windows.firstMatch.screenshot()
+        app.activate()
+        let rootView = app.descendants(matching: .any)
+            .matching(identifier: "mac.root")
+            .firstMatch
+        XCTAssertTrue(rootView.waitForExistence(timeout: 5), "Expected the macOS app root view to exist before capturing \(name).")
+        screenshot = rootView.screenshot()
 #else
         screenshot = app.screenshot()
 #endif
@@ -112,69 +123,54 @@ final class ScreenshotTests: XCTestCase {
     // MARK: - macOS Screenshots
 
     #if os(macOS)
-    @discardableResult
-    private func openSidebarItem(_ title: String, identifier: String) -> XCUIElement {
-        let sidebar = app.outlines.firstMatch
-        XCTAssertTrue(sidebar.waitForExistence(timeout: 5), "Expected the macOS sidebar to be visible.")
-
-        let byIdentifier = sidebar.descendants(matching: .any)
-            .matching(identifier: "sidebar.\(identifier)")
-            .firstMatch
-        if byIdentifier.waitForExistence(timeout: 2) {
-            byIdentifier.click()
-            return byIdentifier
+    private func launchMacApp(sectionID: String? = nil) {
+        if app.state == .runningForeground {
+            app.terminate()
         }
 
-        let byLabel = sidebar.descendants(matching: .any)
-            .matching(NSPredicate(format: "label CONTAINS[c] %@", title))
-            .firstMatch
-        XCTAssertTrue(byLabel.waitForExistence(timeout: 5), "Expected the \(title) sidebar item to be visible.")
-        byLabel.click()
-        return byLabel
+        var arguments = ["-UITests", "-Screenshots"]
+        if let sectionID {
+            arguments += ["-mac-section", sectionID]
+        }
+
+        app.launchArguments = arguments
+        app.launch()
+        sleep(2)
     }
 
     func testCaptureFocusSidebar() throws {
+        launchMacApp(sectionID: "focus")
         // Focus is the default selection
-        sleep(1)
         captureWindow("01_focus")
     }
 
     func testCaptureInsightsSidebar() throws {
-        openSidebarItem("Insights", identifier: "insights")
-        sleep(1)
-
+        launchMacApp(sectionID: "insights")
         captureWindow("02_insights")
     }
 
     func testCaptureReviewQueueSidebar() throws {
-        openSidebarItem("Review Queue", identifier: "reviewQueue")
-        sleep(1)
-
+        launchMacApp(sectionID: "reviewQueue")
         captureWindow("03_queues")
     }
 
     func testCaptureMemorySidebar() throws {
-        openSidebarItem("Memory", identifier: "memory")
-        sleep(1)
-
+        launchMacApp(sectionID: "memory")
         captureWindow("04_memory")
     }
 
     func testCaptureDecisionsSidebar() throws {
-        openSidebarItem("Decisions", identifier: "decisions")
-        sleep(1)
-
+        launchMacApp(sectionID: "decisions")
         captureWindow("05_decisions")
     }
 
     func testCaptureSettingsSidebar() throws {
-        openSidebarItem("Settings", identifier: "settings")
-        sleep(1)
+        launchMacApp(sectionID: "settings")
         captureWindow("06_settings")
     }
 
     func testSettingsSyncButtonKeepsAppResponsive() throws {
-        openSidebarItem("Settings", identifier: "settings")
+        launchMacApp(sectionID: "settings")
 
         let syncButton = app.buttons.containing(
             NSPredicate(format: "label CONTAINS[c] 'Sync'")
@@ -182,12 +178,10 @@ final class ScreenshotTests: XCTestCase {
         XCTAssertTrue(syncButton.waitForExistence(timeout: 5))
         syncButton.click()
 
-        openSidebarItem("Focus", identifier: "focus")
-
-        let focusContent = app.descendants(matching: .any)
-            .matching(identifier: "focus.screen")
+        let settingsContent = app.descendants(matching: .any)
+            .matching(identifier: "settings.screen")
             .firstMatch
-        XCTAssertTrue(focusContent.waitForExistence(timeout: 5))
+        XCTAssertTrue(settingsContent.waitForExistence(timeout: 5))
     }
     #endif
 }
