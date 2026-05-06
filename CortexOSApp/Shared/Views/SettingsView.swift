@@ -110,7 +110,7 @@ struct SettingsView: View {
                     }
             }
 
-            Text("Leave empty to run fully offline on this device.")
+            Text("Leave empty to run locally. Captures stay on-device and can sync after you add a server.")
                 .font(CortexFont.caption)
                 .foregroundStyle(CortexColor.textTertiary)
 
