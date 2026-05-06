@@ -16,12 +16,21 @@ final class WatchDecisionModel: ObservableObject {
         snapshot?.today?.priorities.first
     }
 
+    var isLocalMode: Bool {
+        api.isOffline
+    }
+
     var updatedStatus: String {
+        if api.isOffline { return "Local mode" }
         if isOffline { return "Offline" }
         guard let raw = snapshot?.syncedAt, let date = iso.date(from: raw) else { return status }
         let relative = RelativeDateTimeFormatter()
         relative.unitsStyle = .short
         return "Updated \(relative.localizedString(for: date, relativeTo: Date()))"
+    }
+
+    var captureStatusText: String {
+        api.isOffline ? "Stores locally." : (isOffline ? "Queues offline." : "Syncs automatically.")
     }
 
     func bootstrap() async {
@@ -44,16 +53,20 @@ final class WatchDecisionModel: ObservableObject {
             let fresh = try await api.fetchSnapshot()
             snapshot = fresh
             await SnapshotCache.shared.save(fresh)
-            isOffline = false
+            isOffline = api.isOffline
 
-            let flushedNotes = await CaptureQueue.shared.flushNotes(using: api)
-            let flushedDecisions = await CaptureQueue.shared.flushDecisions(using: api)
-            let flushedFeedback = await CaptureQueue.shared.flushFeedback(using: api)
-            if flushedNotes + flushedDecisions + flushedFeedback > 0 {
-                snapshot = try? await api.fetchSnapshot()
-                status = "Synced queued updates"
+            if api.isOffline {
+                status = "Local mode"
             } else {
-                status = "Synced"
+                let flushedNotes = await CaptureQueue.shared.flushNotes(using: api)
+                let flushedDecisions = await CaptureQueue.shared.flushDecisions(using: api)
+                let flushedFeedback = await CaptureQueue.shared.flushFeedback(using: api)
+                if flushedNotes + flushedDecisions + flushedFeedback > 0 {
+                    snapshot = try? await api.fetchSnapshot()
+                    status = "Synced queued updates"
+                } else {
+                    status = "Synced"
+                }
             }
         } catch {
             isOffline = true
@@ -83,7 +96,11 @@ final class WatchDecisionModel: ObservableObject {
             _ = try await api.createNote(request)
             captureText = ""
             await refreshPending()
-            status = pendingCount > 0 ? "Saved, queued for sync" : "Captured"
+            if api.isOffline {
+                status = "Saved locally"
+            } else {
+                status = pendingCount > 0 ? "Saved, queued for sync" : "Captured"
+            }
         } catch {
             status = "Saved offline"
             await refreshPending()
