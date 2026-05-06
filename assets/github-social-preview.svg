@@ -1,0 +1,24 @@
+<svg width="1280" height="640" viewBox="0 0 1280 640" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="640" rx="48" fill="#0F1411"/>
+  <circle cx="1120" cy="80" r="220" fill="#D6F4C8" fill-opacity="0.10"/>
+  <circle cx="120" cy="580" r="260" fill="#E8D8B8" fill-opacity="0.10"/>
+  <rect x="88" y="88" width="1104" height="464" rx="36" fill="#F7F1E4"/>
+  <rect x="128" y="128" width="1024" height="384" rx="28" fill="#111712"/>
+  <text x="172" y="202" fill="#E9F5E5" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif" font-size="54" font-weight="700">SimpliXio</text>
+  <text x="172" y="268" fill="#C9D9C4" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif" font-size="34" font-weight="500">Turn scattered thoughts into 3 priorities.</text>
+  <g transform="translate(172 334)">
+    <rect width="292" height="112" rx="22" fill="#E9F5E5"/>
+    <text x="28" y="48" fill="#111712" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif" font-size="24" font-weight="700">1. What matters</text>
+    <text x="28" y="82" fill="#435044" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif" font-size="19">Noise becomes focus.</text>
+  </g>
+  <g transform="translate(494 334)">
+    <rect width="292" height="112" rx="22" fill="#F2E4C8"/>
+    <text x="28" y="48" fill="#111712" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif" font-size="24" font-weight="700">2. Why it matters</text>
+    <text x="28" y="82" fill="#574A33" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif" font-size="19">Every priority explains itself.</text>
+  </g>
+  <g transform="translate(816 334)">
+    <rect width="292" height="112" rx="22" fill="#D6F4C8"/>
+    <text x="28" y="48" fill="#111712" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif" font-size="24" font-weight="700">3. Next action</text>
+    <text x="28" y="82" fill="#385236" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif" font-size="19">One concrete move.</text>
+  </g>
+</svg>
