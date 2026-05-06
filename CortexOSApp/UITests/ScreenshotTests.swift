@@ -112,6 +112,27 @@ final class ScreenshotTests: XCTestCase {
     // MARK: - macOS Screenshots
 
     #if os(macOS)
+    @discardableResult
+    private func openSidebarItem(_ title: String, identifier: String) -> XCUIElement {
+        let sidebar = app.outlines.firstMatch
+        XCTAssertTrue(sidebar.waitForExistence(timeout: 5), "Expected the macOS sidebar to be visible.")
+
+        let byIdentifier = sidebar.descendants(matching: .any)
+            .matching(identifier: "sidebar.\(identifier)")
+            .firstMatch
+        if byIdentifier.waitForExistence(timeout: 2) {
+            byIdentifier.click()
+            return byIdentifier
+        }
+
+        let byLabel = sidebar.descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS[c] %@", title))
+            .firstMatch
+        XCTAssertTrue(byLabel.waitForExistence(timeout: 5), "Expected the \(title) sidebar item to be visible.")
+        byLabel.click()
+        return byLabel
+    }
+
     func testCaptureFocusSidebar() throws {
         // Focus is the default selection
         sleep(1)
@@ -119,88 +140,41 @@ final class ScreenshotTests: XCTestCase {
     }
 
     func testCaptureInsightsSidebar() throws {
-        let sidebar = app.outlines.firstMatch
-        if sidebar.waitForExistence(timeout: 5) {
-            let insightsCell = sidebar.cells.containing(
-                NSPredicate(format: "label CONTAINS[c] 'Insights'")
-            ).firstMatch
-            if insightsCell.waitForExistence(timeout: 3) {
-                insightsCell.click()
-            }
-        }
+        openSidebarItem("Insights", identifier: "insights")
         sleep(1)
 
         captureWindow("02_insights")
     }
 
     func testCaptureReviewQueueSidebar() throws {
-        let sidebar = app.outlines.firstMatch
-        if sidebar.waitForExistence(timeout: 5) {
-            let cell = sidebar.cells.containing(
-                NSPredicate(format: "label CONTAINS[c] 'Review Queue'")
-            ).firstMatch
-            if cell.waitForExistence(timeout: 3) {
-                cell.click()
-            }
-        }
+        openSidebarItem("Review Queue", identifier: "reviewQueue")
         sleep(1)
 
         captureWindow("03_queues")
     }
 
     func testCaptureMemorySidebar() throws {
-        let sidebar = app.outlines.firstMatch
-        if sidebar.waitForExistence(timeout: 5) {
-            let cell = sidebar.cells.containing(
-                NSPredicate(format: "label CONTAINS[c] 'Memory'")
-            ).firstMatch
-            if cell.waitForExistence(timeout: 3) {
-                cell.click()
-            }
-        }
+        openSidebarItem("Memory", identifier: "memory")
         sleep(1)
 
         captureWindow("04_memory")
     }
 
     func testCaptureDecisionsSidebar() throws {
-        let sidebar = app.outlines.firstMatch
-        if sidebar.waitForExistence(timeout: 5) {
-            let cell = sidebar.cells.containing(
-                NSPredicate(format: "label CONTAINS[c] 'Decisions'")
-            ).firstMatch
-            if cell.waitForExistence(timeout: 3) {
-                cell.click()
-            }
-        }
+        openSidebarItem("Decisions", identifier: "decisions")
         sleep(1)
 
         captureWindow("05_decisions")
     }
 
     func testCaptureSettingsSidebar() throws {
-        let sidebar = app.outlines.firstMatch
-        if sidebar.waitForExistence(timeout: 5) {
-            let cell = sidebar.cells.containing(
-                NSPredicate(format: "label CONTAINS[c] 'Settings'")
-            ).firstMatch
-            if cell.waitForExistence(timeout: 3) {
-                cell.click()
-            }
-        }
+        openSidebarItem("Settings", identifier: "settings")
         sleep(1)
         captureWindow("06_settings")
     }
 
     func testSettingsSyncButtonKeepsAppResponsive() throws {
-        let sidebar = app.outlines.firstMatch
-        XCTAssertTrue(sidebar.waitForExistence(timeout: 5))
-
-        let settingsCell = sidebar.cells.containing(
-            NSPredicate(format: "label CONTAINS[c] 'Settings'")
-        ).firstMatch
-        XCTAssertTrue(settingsCell.waitForExistence(timeout: 5))
-        settingsCell.click()
+        openSidebarItem("Settings", identifier: "settings")
 
         let syncButton = app.buttons.containing(
             NSPredicate(format: "label CONTAINS[c] 'Sync'")
@@ -208,15 +182,11 @@ final class ScreenshotTests: XCTestCase {
         XCTAssertTrue(syncButton.waitForExistence(timeout: 5))
         syncButton.click()
 
-        let focusCell = sidebar.cells.containing(
-            NSPredicate(format: "label CONTAINS[c] 'Focus'")
-        ).firstMatch
-        XCTAssertTrue(focusCell.waitForExistence(timeout: 5))
-        focusCell.click()
+        openSidebarItem("Focus", identifier: "focus")
 
-        let focusContent = app.staticTexts.containing(
-            NSPredicate(format: "label CONTAINS[c] 'priority' OR label CONTAINS[c] 'Focus'")
-        ).firstMatch
+        let focusContent = app.descendants(matching: .any)
+            .matching(identifier: "focus.screen")
+            .firstMatch
         XCTAssertTrue(focusContent.waitForExistence(timeout: 5))
     }
     #endif
