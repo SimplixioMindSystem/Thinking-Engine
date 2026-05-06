@@ -40,6 +40,7 @@ struct SettingsView: View {
             demoModeEnabled = engine.demoModeEnabled
         }
         .sheet(isPresented: $showQueueSheet) { queueSheet }
+        .accessibilityIdentifier("settings.screen")
     }
 
     // MARK: - iOS layout
