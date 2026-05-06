@@ -49,6 +49,7 @@ struct DailyFocusView: View {
         }
         .safeAreaInset(edge: .bottom) { bottomBar }
         .background(CortexColor.bgPrimary)
+        .accessibilityIdentifier("focus.screen")
         .navigationTitle("Focus")
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {

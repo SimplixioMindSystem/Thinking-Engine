@@ -57,6 +57,7 @@ struct ContentView: View {
                                 Image(systemName: "clock")
                                     .foregroundStyle(CortexColor.textTertiary)
                             }
+                            .accessibilityLabel("Review history")
                         }
                         ToolbarItemGroup(placement: .topBarTrailing) {
                             Button {
@@ -65,6 +66,7 @@ struct ContentView: View {
                                 Image(systemName: "square.and.pencil")
                                     .foregroundStyle(CortexColor.accent)
                             }
+                            .accessibilityLabel("Capture")
 
                             Button {
                                 showSettings = true
@@ -72,6 +74,7 @@ struct ContentView: View {
                                 Image(systemName: "gearshape")
                                     .foregroundStyle(CortexColor.textTertiary)
                             }
+                            .accessibilityLabel("Settings")
                         }
                     }
             }
@@ -197,6 +200,8 @@ struct ContentView: View {
         ForEach(items, id: \.self) { section in
             Label(section.title, systemImage: section.systemImage)
                 .tag(section)
+                .accessibilityLabel(section.title)
+                .accessibilityIdentifier("sidebar.\(section.accessibilityID)")
         }
     }
 
@@ -266,6 +271,25 @@ struct ContentView: View {
             case .settings: "gearshape"
             }
         }
+
+        var accessibilityID: String {
+            switch self {
+            case .focus: "focus"
+            case .capture: "capture"
+            case .notes: "notes"
+            case .insights: "insights"
+            case .decisions: "decisions"
+            case .memory: "memory"
+            case .weeklyReview: "weeklyReview"
+            case .decisionReplay: "decisionReplay"
+            case .signalQueues: "reviewQueue"
+            case .recurringPatterns: "recurringPatterns"
+            case .unresolvedTensions: "unresolvedTensions"
+            case .contentCandidates: "contentCandidates"
+            case .newsletter: "newsletter"
+            case .settings: "settings"
+            }
+        }
     }
     #endif
 }
@@ -297,28 +321,28 @@ private struct SimpliXioOnboardingView: View {
                     VStack(alignment: .leading, spacing: CortexSpacing.md) {
                         onboardingRow(
                             icon: "square.and.pencil",
-                            title: "Capture anything",
-                            message: "Save thoughts, links, decisions, questions, and tensions in seconds, even offline."
+                            title: "Capture messy input",
+                            message: "Save thoughts, links, decisions, questions, and tensions in seconds. Sort later."
                         )
                         onboardingRow(
                             icon: "target",
                             title: "Get 3 priorities",
-                            message: "SimpliXio filters the noise into what matters now."
+                            message: "SimpliXio filters scattered thoughts and project noise into what matters now."
                         )
                         onboardingRow(
                             icon: "lightbulb",
                             title: "Understand why",
-                            message: "Each priority explains why it matters and what to do next."
+                            message: "Each priority explains why it matters before you act."
                         )
                         onboardingRow(
                             icon: "arrow.right.circle",
-                            title: "Take action",
-                            message: "Move on one clear next step instead of juggling everything."
+                            title: "Take one action",
+                            message: "Move on one concrete next step instead of juggling everything."
                         )
                         onboardingRow(
                             icon: "checkmark.seal",
-                            title: "Learn by feedback",
-                            message: "Mark what was useful or done so SimpliXio improves over time."
+                            title: "Improve with feedback",
+                            message: "Mark what was useful, skipped, or done so future priorities get sharper."
                         )
                     }
 
@@ -371,7 +395,7 @@ private struct SimpliXioOnboardingView: View {
                             }
                             Image(systemName: "sparkles")
                                 .imageScale(.medium)
-                            Text("Preview with Demo Data")
+                            Text("Preview 3 priorities")
                                 .font(CortexFont.bodyMedium.weight(.semibold))
                             Spacer(minLength: 0)
                         }
