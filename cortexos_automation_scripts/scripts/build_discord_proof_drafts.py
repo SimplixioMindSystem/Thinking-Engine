@@ -19,6 +19,7 @@ OUTPUT_DIR = AUTOMATION_ROOT / "output" / "discord"
 WEEKLY_REVIEW_PATH = AUTOMATION_ROOT / "output" / "weekly_review" / "latest.json"
 DECISION_REPLAY_PATH = AUTOMATION_ROOT / "output" / "decision_replay" / "latest.json"
 NEWSLETTER_DRAFT_PATH = AUTOMATION_ROOT / "output" / "newsletters" / "drafts" / "latest.json"
+DECISION_EXAMPLES_PATH = AUTOMATION_ROOT.parent / "docs" / "decision-examples" / "decision_examples.json"
 
 REDACT_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}", re.IGNORECASE), "[personal detail removed]"),
@@ -236,6 +237,58 @@ def build_feedback_prompt() -> str:
     ) + "\n"
 
 
+def pick_decision_example() -> dict[str, Any]:
+    payload = load_json(DECISION_EXAMPLES_PATH)
+    examples = payload.get("examples", [])
+    if not isinstance(examples, list):
+        return {}
+
+    preferred = {
+        "how-to-prioritize-startup-ideas",
+        "how-to-turn-github-issues-into-priorities",
+        "how-to-review-your-week-as-a-solo-founder",
+    }
+    for item in examples:
+        if isinstance(item, dict) and str(item.get("slug", "")) in preferred:
+            return item
+    for item in examples:
+        if isinstance(item, dict):
+            return item
+    return {}
+
+
+def build_decision_example_spotlight(example: dict[str, Any]) -> tuple[str, list[str]]:
+    redactions: list[str] = []
+    title, changed = safe_line(str(example.get("title", "")), "How scattered project noise becomes 3 priorities")
+    if changed:
+        redactions.append("decision_example_title")
+    description, changed = safe_line(
+        str(example.get("meta_description", "")),
+        "A public-safe example showing messy input becoming 3 priorities and one next action.",
+    )
+    if changed:
+        redactions.append("decision_example_description")
+
+    path = str(example.get("path", "")).strip() or "docs/decision-examples/index.md"
+    if not path.startswith("docs/decision-examples/"):
+        path = "docs/decision-examples/index.md"
+
+    lines = [
+        "#build-in-public",
+        "",
+        "**Decision Example spotlight**",
+        f"- {title}",
+        f"- {description}",
+        "",
+        "**Why it matters**",
+        "- SimpliXio is easiest to understand when people can see messy input become 3 priorities, why, and action.",
+        "",
+        "**CTA**",
+        f"- Read the example: {path}",
+    ]
+    return "\n".join(lines) + "\n", redactions
+
+
 def write_file(path: Path, content: str) -> str:
     path.write_text(content, encoding="utf-8")
     return str(path)
@@ -246,6 +299,7 @@ def run() -> dict[str, Any]:
     weekly = load_json(WEEKLY_REVIEW_PATH)
     replay = load_json(DECISION_REPLAY_PATH)
     newsletter = load_json(NEWSLETTER_DRAFT_PATH)
+    decision_example = pick_decision_example()
 
     if not weekly and not replay:
         payload = {
@@ -262,12 +316,14 @@ def run() -> dict[str, Any]:
     review_md, review_redactions = build_weekly_review_post(weekly)
     lesson_md, lesson_redactions = build_product_lesson(weekly, replay)
     feedback_md = build_feedback_prompt()
+    decision_example_md, decision_example_redactions = build_decision_example_spotlight(decision_example)
 
     release_path = OUTPUT_DIR / "release_notes_latest.md"
     weekly_path = OUTPUT_DIR / "build_in_public_latest.md"
     review_path = OUTPUT_DIR / "weekly_review_latest.md"
     lesson_path = OUTPUT_DIR / "product_lesson_latest.md"
     feedback_path = OUTPUT_DIR / "feedback_prompt_latest.md"
+    decision_example_path = OUTPUT_DIR / "decision_example_spotlight_latest.md"
     manifest_path = OUTPUT_DIR / "latest.json"
 
     payload = {
@@ -282,7 +338,13 @@ def run() -> dict[str, Any]:
             "private_material_allowed": False,
         },
         "redactions_applied": sorted(
-            set(release_redactions + weekly_redactions + review_redactions + lesson_redactions)
+            set(
+                release_redactions
+                + weekly_redactions
+                + review_redactions
+                + lesson_redactions
+                + decision_example_redactions
+            )
         ),
         "files": {
             "release_notes": write_file(release_path, release_md),
@@ -290,6 +352,7 @@ def run() -> dict[str, Any]:
             "weekly_review": write_file(review_path, review_md),
             "product_lesson": write_file(lesson_path, lesson_md),
             "feedback": write_file(feedback_path, feedback_md),
+            "decision_example_spotlight": write_file(decision_example_path, decision_example_md),
         },
     }
 
