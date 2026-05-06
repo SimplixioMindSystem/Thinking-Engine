@@ -34,18 +34,22 @@ struct WatchRootView: View {
     private var statusRow: some View {
         HStack(spacing: 6) {
             Circle()
-                .fill(model.isOffline ? CortexColor.warning : CortexColor.success)
+                .fill(model.isLocalMode ? CortexColor.neutral : (model.isOffline ? CortexColor.warning : CortexColor.success))
                 .frame(width: 6, height: 6)
             Text(model.updatedStatus)
                 .font(.caption2)
                 .foregroundStyle(CortexColor.textSecondary)
             Spacer()
             if model.pendingCount > 0 {
-                Text("Q\(model.pendingCount)")
+                Text(queuedLabel)
                     .font(.caption2)
                     .foregroundStyle(CortexColor.accent)
             }
         }
+    }
+
+    private var queuedLabel: String {
+        model.pendingCount == 1 ? "1 queued" : "\(model.pendingCount) queued"
     }
 
     @ViewBuilder
@@ -74,7 +78,11 @@ struct WatchRootView: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(CortexColor.bgSecondary)
+        .background(CortexColor.bgSurface)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(CortexColor.strokeSubtle, lineWidth: 1)
+        )
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
@@ -105,7 +113,11 @@ struct WatchRootView: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(CortexColor.bgSecondary)
+        .background(CortexColor.bgSurface)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(CortexColor.strokeSubtle, lineWidth: 1)
+        )
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
@@ -114,7 +126,7 @@ struct WatchRootView: View {
         Button(action: action) {
             Label(title, systemImage: icon)
                 .font(.caption2)
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, minHeight: 30)
         }
         .buttonStyle(.bordered)
     }
@@ -130,24 +142,32 @@ struct WatchRootView: View {
                 .textFieldStyle(.plain)
                 .padding(8)
                 .background(CortexColor.bgSecondary)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(CortexColor.strokeSubtle, lineWidth: 1)
+                )
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 
             Button {
                 Task { await model.captureByVoice() }
             } label: {
                 Label("Capture", systemImage: "mic.fill")
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, minHeight: 34)
             }
             .disabled(model.captureText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             .buttonStyle(.borderedProminent)
 
-            Text(model.isOffline ? "Queues offline." : "Syncs automatically.")
+            Text(model.captureStatusText)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(CortexColor.bgSecondary)
+        .background(CortexColor.bgSurface)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(CortexColor.strokeSubtle, lineWidth: 1)
+        )
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
@@ -155,21 +175,25 @@ struct WatchRootView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("No next action yet")
                 .font(.headline)
-            Text("Sync to pull what matters now.")
+            Text(model.isLocalMode ? "Capture one thought. It stays private here." : "Sync to pull what matters now.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
             Button {
                 Task { await model.sync() }
             } label: {
-                Label(model.isSyncing ? "Syncing..." : "Sync", systemImage: "arrow.clockwise")
-                    .frame(maxWidth: .infinity)
+                Label(model.isSyncing ? "Syncing..." : (model.isLocalMode ? "Refresh" : "Sync"), systemImage: "arrow.clockwise")
+                    .frame(maxWidth: .infinity, minHeight: 34)
             }
             .disabled(model.isSyncing)
             .buttonStyle(.borderedProminent)
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(CortexColor.bgSecondary)
+        .background(CortexColor.bgSurface)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(CortexColor.strokeSubtle, lineWidth: 1)
+        )
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
