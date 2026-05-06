@@ -3,7 +3,7 @@
 # Common development commands for the monorepo.
 # ─────────────────────────────────────────────────────
 
-.PHONY: help install lint test test-python test-swift security serve clean \
+.PHONY: help install lint test test-python test-swift security serve clean generate \
 	autopilot-weekly autopilot-acq-daily autopilot-acq-weekly autopilot-all
 
 help: ## Show this help
@@ -11,6 +11,9 @@ help: ## Show this help
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
 # ── Setup ───────────────────────────────────────────
+
+generate: ## Regenerate Xcode project (picks up local.yml for DEVELOPMENT_TEAM)
+	cd CortexOSApp && LOCAL_YAML=1 xcodegen generate
 
 install: ## Install Python deps into .venv
 	python3 -m venv .venv

@@ -1,4 +1,12 @@
 name: CortexOS
+
+# Per-developer overrides (DEVELOPMENT_TEAM etc.) go in local.yml – see local.yml.example.
+# local.yml is gitignored and must never be committed.
+# Run via `make generate` (sets LOCAL_YAML=1) so local.yml is picked up automatically.
+include:
+  - path: local.yml
+    enable: ${LOCAL_YAML}
+
 options:
   bundleIdPrefix: me.ph7.cortexos
   deploymentTarget:
@@ -13,7 +21,6 @@ settings:
     SWIFT_VERSION: "5.9"
     MARKETING_VERSION: "1.1.4"
     CURRENT_PROJECT_VERSION: "7"
-    DEVELOPMENT_TEAM: 2V8LZ2444Y
     CODE_SIGN_STYLE: Automatic
 
 targets:

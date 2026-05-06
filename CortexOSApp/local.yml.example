@@ -1,0 +1,11 @@
+# xcodegen local overrides — safe to commit (no real values).
+# Copy this file to local.yml and fill in your Apple Developer Team ID.
+#
+#   cp CortexOSApp/local.yml.example CortexOSApp/local.yml
+#
+# Find your Team ID at https://developer.apple.com/account → Membership.
+# local.yml is gitignored and must never be committed.
+
+settings:
+  base:
+    DEVELOPMENT_TEAM: XXXXXXXXXX

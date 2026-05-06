@@ -88,3 +88,6 @@ cortexos_automation_scripts/output/
 CortexOSApp/screenshot_results/
 CortexOSApp/store_assets/marketing/
 CortexOSApp/store_assets/**/*_raw.png
+
+# xcodegen local overrides (DEVELOPMENT_TEAM etc.) – never commit
+CortexOSApp/local.yml
