@@ -68,7 +68,9 @@ Native app (iOS + macOS + watchOS):
 
 ```bash
 brew install xcodegen
-./generate_xcode_project.sh
+cp CortexOSApp/local.yml.example CortexOSApp/local.yml
+# Edit CortexOSApp/local.yml and set your DEVELOPMENT_TEAM (Apple Developer Membership page)
+make generate
 open CortexOSApp/CortexOS.xcodeproj
 ```
 
@@ -143,7 +145,10 @@ python3 cortexos_automation_scripts/scripts/build_public_proof_archive.py
 ## TestFlight
 
 ```bash
-cd CortexOSApp
+cd CortexOSApp/fastlane
+cp .env.example .env
+# Edit .env: set ASC_KEY_PATH, ASC_ISSUER_ID, ASC_KEY_ID, TEAM_ID
+cd ..
 fastlane ios testflight_release
 fastlane mac testflight_release
 fastlane watch_testflight
