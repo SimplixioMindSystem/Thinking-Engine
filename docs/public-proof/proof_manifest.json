@@ -1,0 +1,75 @@
+{
+  "generated_at": "2026-05-05T22:44:37+00:00",
+  "status": "public_safe",
+  "proof_surface_count": 5,
+  "featured_examples": [
+    {
+      "title": "How to Prioritize Startup Ideas",
+      "slug": "how-to-prioritize-startup-ideas",
+      "description": "See how a messy list of startup ideas can be filtered into 3 priorities, clear reasoning, and one next action.",
+      "category": "Startup Prioritization",
+      "path": "../decision-examples/how-to-prioritize-startup-ideas.md"
+    },
+    {
+      "title": "How to Turn GitHub Issues Into Priorities",
+      "slug": "how-to-turn-github-issues-into-priorities",
+      "description": "A builder-focused example showing how GitHub issue noise can become 3 priorities and one next action.",
+      "category": "Engineering Focus",
+      "path": "../decision-examples/how-to-turn-github-issues-into-priorities.md"
+    },
+    {
+      "title": "How to Review Your Week as a Solo Founder",
+      "slug": "how-to-review-your-week-as-a-solo-founder",
+      "description": "A weekly review example showing how repeated signals become 3 priorities and one next action.",
+      "category": "Weekly Review",
+      "path": "../decision-examples/how-to-review-your-week-as-a-solo-founder.md"
+    }
+  ],
+  "surfaces": [
+    {
+      "title": "Decision Examples",
+      "slug": "decision-examples",
+      "description": "Public-safe examples showing messy input becoming signals, ignored noise, 3 priorities, why, and action.",
+      "source_type": "synthetic_public_safe_examples",
+      "path": "../decision-examples/index.md",
+      "cta": "Read the Decision Examples."
+    },
+    {
+      "title": "Changelog",
+      "slug": "changelog",
+      "description": "Release notes that explain what changed, why it matters, and what users can do next.",
+      "source_type": "release_notes",
+      "path": "changelog/README.md",
+      "cta": "Use meaningful releases as proof."
+    },
+    {
+      "title": "Weekly Review",
+      "slug": "weekly-review",
+      "description": "Public-safe weekly summaries of what repeated, what mattered, what was ignored, and what comes next.",
+      "source_type": "weekly_review",
+      "path": "weekly-review/README.md",
+      "cta": "Turn weekly learning into visible proof."
+    },
+    {
+      "title": "Decision Replay",
+      "slug": "decision-replay",
+      "description": "Examples showing which signals were reviewed, kept, ignored, and turned into final priorities.",
+      "source_type": "decision_replay",
+      "path": "decision-replay/README.md",
+      "cta": "Show why priorities surfaced."
+    },
+    {
+      "title": "Newsletter Examples",
+      "slug": "newsletter-examples",
+      "description": "Public-safe newsletter drafts generated from reviews, replays, product lessons, and approved examples.",
+      "source_type": "newsletter",
+      "path": "newsletter-examples/README.md",
+      "cta": "Turn private thinking into a safe public lesson."
+    }
+  ],
+  "publishing_rules": {
+    "autopublish": false,
+    "manual_approval_required": true,
+    "private_material_allowed": false
+  }
+}
