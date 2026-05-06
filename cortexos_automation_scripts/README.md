@@ -73,6 +73,8 @@ cortexos_automation_scripts/
     build_public_newsletter.py
     build_discord_proof_drafts.py
     generate_newsletter.py
+    build_decision_examples.py
+    build_public_proof_archive.py
     marketing_quality_gate.py
     publish_outputs.py
     run_weekly_pipeline.py
@@ -113,6 +115,8 @@ cortexos_automation_scripts/
       product_lesson_latest.md
       feedback_prompt_latest.md
       latest.json
+    decision_examples/
+      # runtime exports may be added later
     drafts/
     quality_gate/
     logs/
@@ -153,6 +157,52 @@ python3 scripts/run_weekly_pipeline.py --strict-quality
 ```bash
 python3 scripts/run_weekly_pipeline.py --strict-quality
 ```
+
+## Decision Examples
+
+Decision Examples are the public-safe long-tail acquisition layer. They are committed under `../docs/decision-examples/` so they can be reviewed, linked, and published without depending on runtime output.
+
+Validate:
+
+```bash
+python3 scripts/build_decision_examples.py --check
+```
+
+Rebuild the committed Markdown archive:
+
+```bash
+python3 scripts/build_decision_examples.py
+```
+
+Rules:
+- synthetic examples must be clearly marked as examples
+- every example must include exactly 3 priorities
+- every priority needs a concrete why and action
+- sensitive/private material is rejected
+- no fake traction, fake users, or fake metrics
+- no thin SEO pages
+
+## Public Proof Archive
+
+The public proof archive packages safe proof surfaces into one Desire Loop:
+
+```text
+capture messy input -> 3 priorities -> why -> action -> public-safe proof
+```
+
+Rebuild:
+
+```bash
+python3 scripts/build_public_proof_archive.py
+```
+
+Committed outputs:
+- `../docs/public-proof/index.md`
+- `../docs/public-proof/proof_manifest.json`
+- `../docs/public-proof/changelog/README.md`
+- `../docs/public-proof/weekly-review/README.md`
+- `../docs/public-proof/decision-replay/README.md`
+- `../docs/public-proof/newsletter-examples/README.md`
 
 ## Fastest way (recommended)
 
