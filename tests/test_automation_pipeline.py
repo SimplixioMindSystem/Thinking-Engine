@@ -581,6 +581,7 @@ def test_discord_proof_drafts_are_generated_as_manual_only(tmp_path):
     assert Path(payload["manifest"]).exists()
     assert Path(payload["files"]["weekly_review"]).exists()
     assert Path(payload["files"]["product_lesson"]).exists()
+    assert Path(payload["files"]["decision_example_spotlight"]).exists()
 
 
 def test_discord_proof_drafts_apply_redaction(tmp_path):
