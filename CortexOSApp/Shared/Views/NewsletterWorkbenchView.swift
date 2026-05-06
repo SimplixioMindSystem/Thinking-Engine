@@ -3,7 +3,7 @@ import SwiftUI
 struct NewsletterWorkbenchView: View {
     @EnvironmentObject private var engine: CortexEngine
 
-    @State private var selectedSource: SourcePreset = .thisWeek
+    @State private var selectedSource: SourcePreset = .last7Days
     @State private var selectedMode: DraftMode = .weeklyLessons
     @State private var isGeneratingDraft = false
 
@@ -39,23 +39,34 @@ struct NewsletterWorkbenchView: View {
 
     @ViewBuilder
     private var statusStrip: some View {
-        HStack(spacing: CortexSpacing.sm) {
-            statusPill(
-                label: "Private by default",
-                systemImage: "lock.fill",
-                color: CortexColor.textSecondary
-            )
-            statusPill(
-                label: "Redaction required",
-                systemImage: "shield.lefthalf.filled",
-                color: CortexColor.warning
-            )
-            statusPill(
-                label: "Manual publish only",
-                systemImage: "hand.raised.fill",
-                color: CortexColor.accent
-            )
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: CortexSpacing.sm) {
+                newsletterTrustPills
+            }
+
+            VStack(alignment: .leading, spacing: CortexSpacing.xs) {
+                newsletterTrustPills
+            }
         }
+    }
+
+    @ViewBuilder
+    private var newsletterTrustPills: some View {
+        statusPill(
+            label: "Private by default",
+            systemImage: "lock.fill",
+            color: CortexColor.textSecondary
+        )
+        statusPill(
+            label: "Redaction required",
+            systemImage: "shield.lefthalf.filled",
+            color: CortexColor.warning
+        )
+        statusPill(
+            label: "Manual publish only",
+            systemImage: "hand.raised.fill",
+            color: CortexColor.accent
+        )
     }
 
     private var sourceControls: some View {
@@ -296,25 +307,22 @@ struct NewsletterWorkbenchView: View {
 
 private extension NewsletterWorkbenchView {
     enum SourcePreset: String, CaseIterable, Identifiable {
-        case thisWeek
-        case lastWeek
-        case thisMonth
+        case last7Days
+        case last30Days
 
         var id: String { rawValue }
 
         var label: String {
             switch self {
-            case .thisWeek: "This Week"
-            case .lastWeek: "Last Week"
-            case .thisMonth: "This Month"
+            case .last7Days: "Last 7 Days"
+            case .last30Days: "Last 30 Days"
             }
         }
 
         var periodValue: String {
             switch self {
-            case .thisWeek: "weekly"
-            case .lastWeek: "weekly"
-            case .thisMonth: "monthly"
+            case .last7Days: "weekly"
+            case .last30Days: "monthly"
             }
         }
     }
