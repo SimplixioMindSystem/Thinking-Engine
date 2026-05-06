@@ -43,16 +43,16 @@ BRAND_TEXT_SECONDARY = (255, 255, 255, 200)  # White with alpha
 # Marketing copy for each screen (conversion-first, concrete output language).
 IPHONE_MARKETING = {
     "01_focus": {
-        "headline": "Decide what\nmatters now.",
-        "subheadline": "Scattered thoughts become 3 priorities.",
+        "headline": "Turn noise into\n3 priorities.",
+        "subheadline": "See what matters now before opening another list.",
     },
     "02_decide": {
-        "headline": "Know why.\nTake action.",
-        "subheadline": "Each priority includes why it matters and what to do next.",
+        "headline": "Know why\nit matters.",
+        "subheadline": "Each priority explains the reason before the action.",
     },
     "03_capture": {
-        "headline": "Capture in seconds.\nStay clear.",
-        "subheadline": "Capture notes, links, and thoughts fast, even offline.",
+        "headline": "Take the\nnext action.",
+        "subheadline": "One clear move replaces scattered open loops.",
     },
     "04_settings": {
         "headline": "Private by default.\nHuman in control.",
@@ -63,17 +63,17 @@ IPHONE_MARKETING = {
 MAC_MARKETING = [
     (
         "01_focus",
-        {"headline": "Decide what matters now", "subheadline": "See your top 3 priorities and one next move."},
+        {"headline": "Turn noise into 3 priorities", "subheadline": "See what matters now, why, and one next action."},
     ),
     (
         "02_insights",
-        {"headline": "See what repeated", "subheadline": "Weekly Review surfaces recurring priorities and patterns."},
+        {"headline": "Know why it matters", "subheadline": "Weekly Review shows what repeated and what to do next."},
     ),
     (
         "03_queues",
         {
             "headline": "Review only what matters",
-            "subheadline": "Decisions, actions, tensions, and content candidates stay curated.",
+            "subheadline": "Decision Replay shows what was kept, ignored, and chosen.",
         },
     ),
     (
