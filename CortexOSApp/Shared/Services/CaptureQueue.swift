@@ -32,8 +32,64 @@ actor CaptureQueue {
     struct QueuedNote: Codable, Identifiable {
         let id: UUID
         let title: String
+        let insight: String
+        let implication: String
+        let action: String
         let sourceURL: String
+        let tags: [String]
         let capturedAt: Date
+
+        init(
+            id: UUID = UUID(),
+            title: String,
+            insight: String = "",
+            implication: String = "",
+            action: String = "",
+            sourceURL: String = "",
+            tags: [String] = [],
+            capturedAt: Date = Date()
+        ) {
+            self.id = id
+            self.title = title
+            self.insight = insight
+            self.implication = implication
+            self.action = action
+            self.sourceURL = sourceURL
+            self.tags = tags
+            self.capturedAt = capturedAt
+        }
+
+        enum CodingKeys: String, CodingKey {
+            case id, title, insight, implication, action, tags, capturedAt
+            case sourceURL = "source_url"
+            case legacySourceURL = "sourceURL"
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            id = try container.decode(UUID.self, forKey: .id)
+            title = try container.decode(String.self, forKey: .title)
+            insight = try container.decodeIfPresent(String.self, forKey: .insight) ?? ""
+            implication = try container.decodeIfPresent(String.self, forKey: .implication) ?? ""
+            action = try container.decodeIfPresent(String.self, forKey: .action) ?? ""
+            sourceURL = try container.decodeIfPresent(String.self, forKey: .sourceURL)
+                ?? container.decodeIfPresent(String.self, forKey: .legacySourceURL)
+                ?? ""
+            tags = try container.decodeIfPresent([String].self, forKey: .tags) ?? []
+            capturedAt = try container.decode(Date.self, forKey: .capturedAt)
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(id, forKey: .id)
+            try container.encode(title, forKey: .title)
+            try container.encode(insight, forKey: .insight)
+            try container.encode(implication, forKey: .implication)
+            try container.encode(action, forKey: .action)
+            try container.encode(sourceURL, forKey: .sourceURL)
+            try container.encode(tags, forKey: .tags)
+            try container.encode(capturedAt, forKey: .capturedAt)
+        }
     }
 
     struct QueuedDecision: Codable, Identifiable {
@@ -97,12 +153,21 @@ actor CaptureQueue {
 
     // MARK: - Enqueue
 
-    func enqueueNote(title: String, sourceURL: String = "") {
+    func enqueueNote(
+        title: String,
+        insight: String = "",
+        implication: String = "",
+        action: String = "",
+        sourceURL: String = "",
+        tags: [String] = []
+    ) {
         let item = QueuedNote(
-            id: UUID(),
             title: title,
+            insight: insight,
+            implication: implication,
+            action: action,
             sourceURL: sourceURL,
-            capturedAt: Date()
+            tags: tags
         )
         notes.append(item)
         persistNotes()
@@ -154,9 +219,11 @@ actor CaptureQueue {
         for item in queued {
             let request = NoteCreateRequest(
                 title: item.title,
-                insight: "",
+                insight: item.insight,
+                implication: item.implication,
+                action: item.action,
                 sourceURL: item.sourceURL,
-                tags: []
+                tags: item.tags
             )
 
             do {
