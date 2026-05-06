@@ -87,6 +87,59 @@ Server runs on port `8420`.
 System architecture and scoring model:
 - [cortex_os_system.md](cortex_os_system.md)
 
+Public-safe developer demo:
+
+```bash
+python3 examples/simplixio_signal_demo.py --dry-run
+```
+
+This shows how an external tool can send safe project signals into SimpliXio and receive the same core output: 3 priorities, why they matter, and one next action.
+
+## Developer Credibility Layer
+
+SimpliXio is not being turned into a developer platform. The public examples exist to make the product loop inspectable for builders while keeping private product logic and private user data protected.
+
+- [OpenClaw skill README](openclaw/simplixio-decision-skill/README.md): GitHub-ready positioning, examples, use cases, and author section.
+- [Public-safe examples](examples/README.md): API demo for capture -> 3 priorities -> why -> action.
+- [Developer credibility plan](docs/developer-credibility-layer.md): GitHub proof layer, real metrics policy, and launch discipline.
+
+## Decision Examples
+
+Decision Examples are public-safe pages that make SimpliXio searchable and easier to understand. Each page shows a frequent decision pain as a concrete transformation:
+
+```text
+messy input -> signals detected -> ignored noise -> 3 priorities -> why -> action
+```
+
+- [Decision Examples archive](docs/decision-examples/index.md)
+- [Decision Example template](docs/decision-examples/_template.md)
+- [Decision Example generator](cortexos_automation_scripts/scripts/build_decision_examples.py)
+
+Validate or rebuild them with:
+
+```bash
+python3 cortexos_automation_scripts/scripts/build_decision_examples.py --check
+python3 cortexos_automation_scripts/scripts/build_decision_examples.py
+```
+
+## Public Proof
+
+The SimpliXio Desire Loop turns product value into safe public proof:
+
+```text
+capture messy input -> 3 priorities -> why -> action -> public-safe proof
+```
+
+- [Public proof archive](docs/public-proof/index.md)
+- [Public proof manifest](docs/public-proof/proof_manifest.json)
+- [Public proof archive builder](cortexos_automation_scripts/scripts/build_public_proof_archive.py)
+
+Rebuild it with:
+
+```bash
+python3 cortexos_automation_scripts/scripts/build_public_proof_archive.py
+```
+
 ## TestFlight
 
 ```bash
@@ -117,6 +170,8 @@ Detailed runbook:
 
 Positioning + trust playbooks:
 - [docs/messaging-stack.md](docs/messaging-stack.md)
+- [docs/desire-loop.md](docs/desire-loop.md)
+- [docs/developer-credibility-layer.md](docs/developer-credibility-layer.md)
 - [docs/integrated-product-system-2026-04-30.md](docs/integrated-product-system-2026-04-30.md)
 - [docs/values-alignment-plan-2026-04-29.md](docs/values-alignment-plan-2026-04-29.md)
 - [docs/reorg-plan-2026-04-29.md](docs/reorg-plan-2026-04-29.md)
