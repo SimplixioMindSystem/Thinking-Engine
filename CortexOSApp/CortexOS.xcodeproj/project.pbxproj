@@ -462,29 +462,23 @@
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					0DA937660E7FA94BC5AA74AC = {
-						DevelopmentTeam = 2V8LZ2444Y;
 						ProvisioningStyle = Automatic;
 						TestTargetID = 9289113ECDE79DBEECBD7E8E;
 					};
 					478B9E8325E8EDB61C4E58F1 = {
-						DevelopmentTeam = 2V8LZ2444Y;
 						ProvisioningStyle = Automatic;
 					};
 					48566068873B85D9B4B03162 = {
-						DevelopmentTeam = 2V8LZ2444Y;
 						ProvisioningStyle = Automatic;
 						TestTargetID = 478B9E8325E8EDB61C4E58F1;
 					};
 					8876A5EE4712EFA940DFC8B5 = {
-						DevelopmentTeam = 2V8LZ2444Y;
 						ProvisioningStyle = Automatic;
 					};
 					9289113ECDE79DBEECBD7E8E = {
-						DevelopmentTeam = 2V8LZ2444Y;
 						ProvisioningStyle = Automatic;
 					};
 					EAA72848397871234B08D719 = {
-						DevelopmentTeam = 2V8LZ2444Y;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -714,7 +708,6 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 7;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = 2V8LZ2444Y;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -898,7 +891,6 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 7;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = 2V8LZ2444Y;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
