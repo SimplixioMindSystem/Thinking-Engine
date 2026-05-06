@@ -193,7 +193,16 @@ final class APIService: ObservableObject {
 
     func createNote(_ body: NoteCreateRequest) async throws -> KnowledgeNote {
         if isOffline {
-            return await OfflineStore.shared.createNote(body)
+            let local = await OfflineStore.shared.createNote(body)
+            await CaptureQueue.shared.enqueueNote(
+                title: body.title,
+                insight: body.insight,
+                implication: body.implication,
+                action: body.action,
+                sourceURL: body.sourceURL,
+                tags: body.tags
+            )
+            return local
         }
         do {
             return try await createNoteRemote(body)
@@ -201,7 +210,11 @@ final class APIService: ObservableObject {
             let local = await OfflineStore.shared.createNote(body)
             await CaptureQueue.shared.enqueueNote(
                 title: body.title,
-                sourceURL: body.sourceURL
+                insight: body.insight,
+                implication: body.implication,
+                action: body.action,
+                sourceURL: body.sourceURL,
+                tags: body.tags
             )
             return local
         }
@@ -310,7 +323,14 @@ final class APIService: ObservableObject {
 
     func recordDecision(_ body: DecisionCreateRequest) async throws -> SyncDecision {
         if isOffline {
-            return await OfflineStore.shared.recordDecision(body)
+            let local = await OfflineStore.shared.recordDecision(body)
+            await CaptureQueue.shared.enqueueDecision(
+                decision: body.decision,
+                reason: body.reason,
+                project: body.project,
+                assumptions: body.assumptions
+            )
+            return local
         }
         do {
             return try await recordDecisionRemote(body)
