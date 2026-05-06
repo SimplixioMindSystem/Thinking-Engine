@@ -38,12 +38,12 @@ struct KnowledgeNote: Codable, Identifiable, Hashable {
 
     static let example = KnowledgeNote(
         id: "abc123",
-        title: "Context-Aware Retrieval Gains",
-        insight: "Contextual embeddings outperform static ones for knowledge retrieval.",
-        implication: "SimpliXio ranking should use dynamic context windows.",
-        action: "Prototype dynamic context embedding pipeline.",
-        sourceURL: "https://example.com/paper",
-        tags: ["AI", "retrieval"],
+        title: "Onboarding clarity is blocking first-use value",
+        insight: "The first screen should make 3 priorities, why, and action obvious immediately.",
+        implication: "Users cannot want SimpliXio if the value takes too long to understand.",
+        action: "Reduce the first screen to capture, 3 priorities, and one next action.",
+        sourceURL: "",
+        tags: ["onboarding", "focus"],
         createdAt: ISO8601DateFormatter().string(from: .now),
         updatedAt: "",
         archived: false

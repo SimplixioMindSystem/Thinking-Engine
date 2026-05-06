@@ -8,12 +8,17 @@ options:
   xcodeVersion: "16.0"
   createIntermediateGroups: true
 
+# Local.xcconfig supplies DEVELOPMENT_TEAM (gitignored – never committed).
+# Copy CortexOSApp/Local.xcconfig.example → CortexOSApp/Local.xcconfig and fill in your Team ID.
+configFiles:
+  Debug: Local.xcconfig
+  Release: Local.xcconfig
+
 settings:
   base:
     SWIFT_VERSION: "5.9"
     MARKETING_VERSION: "1.1.4"
     CURRENT_PROJECT_VERSION: "7"
-    DEVELOPMENT_TEAM: 2V8LZ2444Y
     CODE_SIGN_STYLE: Automatic
 
 targets:
