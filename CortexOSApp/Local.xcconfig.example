@@ -1,6 +1,0 @@
-// Local Xcode configuration – safe to commit (no real values).
-// Copy to Local.xcconfig and fill in your Apple Developer Team ID.
-// Find your Team ID at https://developer.apple.com/account → Membership.
-// Local.xcconfig is gitignored and must never be committed.
-
-DEVELOPMENT_TEAM = XXXXXXXXXX

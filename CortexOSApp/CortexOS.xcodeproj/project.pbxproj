@@ -184,7 +184,6 @@
 		F40F5AE2A6234C33C5D518E0 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		F5CA9EF84BDCB0E2FA37F75F /* WatchRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchRootView.swift; sourceTree = "<group>"; };
 		FE206CAC9EDAB0031B2A6271 /* CortexOS-iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "CortexOS-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		"TEMP_CDC83817-B9EC-4DB9-BE11-32BD994C6BBA" /* Local.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Local.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -340,14 +339,6 @@
 				B245C0F1ACBE90E1E66E446B /* Theme.swift */,
 			);
 			path = Design;
-			sourceTree = "<group>";
-		};
-		"TEMP_08A37BE9-E4B1-4EA1-A4AD-F460F66E1166" /* CortexOSApp */ = {
-			isa = PBXGroup;
-			children = (
-				"TEMP_CDC83817-B9EC-4DB9-BE11-32BD994C6BBA" /* Local.xcconfig */,
-			);
-			path = CortexOSApp;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -688,7 +679,6 @@
 /* Begin XCBuildConfiguration section */
 		002115FDF6F62C885010D445 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = "TEMP_CDC83817-B9EC-4DB9-BE11-32BD994C6BBA" /* Local.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -724,6 +714,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 7;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 2V8LZ2444Y;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -872,7 +863,6 @@
 		};
 		A8C23489409D0834921F7995 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = "TEMP_CDC83817-B9EC-4DB9-BE11-32BD994C6BBA" /* Local.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -908,6 +898,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 7;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 2V8LZ2444Y;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
