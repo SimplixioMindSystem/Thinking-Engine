@@ -33,9 +33,6 @@ tmp/
 CortexOSApp/fastlane/Fastfile
 CortexOSApp/fastlane/Appfile
 
-# Local Xcode config – contains Apple Developer Team ID, never commit
-CortexOSApp/Local.xcconfig
-
 # macOS
 ._*
 .DS_Store
