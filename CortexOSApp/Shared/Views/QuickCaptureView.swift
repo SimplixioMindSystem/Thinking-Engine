@@ -28,6 +28,39 @@ struct QuickCaptureView: View {
             .first { $0.hasPrefix("http://") || $0.hasPrefix("https://") }
     }
 
+    private var capturedStatusText: String {
+        if engine.api.isOffline { return "Captured locally" }
+        return engine.isConnected ? "Captured" : "Captured offline"
+    }
+
+    private var capturedStatusIcon: String {
+        if engine.api.isOffline { return "checkmark.circle.fill" }
+        return engine.isConnected ? "checkmark.circle.fill" : "arrow.clockwise.circle"
+    }
+
+    private var captureSyncText: String {
+        if engine.api.isOffline {
+            return "Stored on this device. Add a server later to sync."
+        }
+        return engine.isConnected ? "Capture syncs automatically." : "Offline capture is queued safely."
+    }
+
+    private var captureSyncIcon: String {
+        if engine.api.isOffline { return "internaldrive" }
+        return engine.isConnected ? "arrow.triangle.2.circlepath" : "tray.and.arrow.up"
+    }
+
+    private func captureTitle(from value: String) -> String {
+        let compact = value
+            .split(whereSeparator: \.isWhitespace)
+            .joined(separator: " ")
+
+        guard compact.count > 90 else { return compact }
+
+        let prefix = compact.prefix(87).trimmingCharacters(in: .whitespacesAndNewlines)
+        return "\(prefix)..."
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: CortexSpacing.lg) {
@@ -89,8 +122,8 @@ struct QuickCaptureView: View {
 
                 if saved {
                     Label(
-                        engine.isConnected ? "Captured" : "Captured offline",
-                        systemImage: engine.isConnected ? "checkmark.circle.fill" : "arrow.clockwise.circle"
+                        capturedStatusText,
+                        systemImage: capturedStatusIcon
                     )
                     .font(CortexFont.caption)
                     .foregroundStyle(CortexColor.success)
@@ -98,8 +131,8 @@ struct QuickCaptureView: View {
                 }
 
                 Label(
-                    engine.isConnected ? "Capture syncs automatically." : "Offline capture is queued safely.",
-                    systemImage: engine.isConnected ? "arrow.triangle.2.circlepath" : "tray.and.arrow.up"
+                    captureSyncText,
+                    systemImage: captureSyncIcon
                 )
                 .font(CortexFont.caption)
                 .foregroundStyle(CortexColor.textTertiary)
@@ -181,8 +214,8 @@ struct QuickCaptureView: View {
 
         default:
             let note = NoteCreateRequest(
-                title: trimmed,
-                insight: "",
+                title: captureTitle(from: trimmed),
+                insight: trimmed,
                 sourceURL: detectedURL ?? "",
                 tags: [mode.noteTag]
             )
