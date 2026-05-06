@@ -37,6 +37,10 @@ struct ContentView: View {
         }
     }
 
+    private var launchArguments: [String] {
+        ProcessInfo.processInfo.arguments
+    }
+
     // MARK: - iOS (Focus / Capture)
 
     #if os(iOS)
@@ -139,44 +143,47 @@ struct ContentView: View {
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     private var macOSRoot: some View {
-        NavigationSplitView(columnVisibility: $columnVisibility) {
-            List(selection: $selection) {
-                sidebarGroup("Now", items: MacSection.coreSidebar)
-                sidebarGroup("Review", items: MacSection.reviewSidebar)
-                sidebarGroup("Create", items: MacSection.publishSidebar)
-                sidebarGroup("Control", items: MacSection.systemSidebar)
-            }
-            .navigationTitle("SimpliXio")
-            .listStyle(.sidebar)
-            .foregroundStyle(CortexColor.textPrimary)
-            .navigationSplitViewColumnWidth(min: 220, ideal: 240, max: 300)
-        } detail: {
-            switch selection {
-            case .focus:       DailyFocusView()
-            case .capture:     QuickCaptureView()
-            case .notes:       KnowledgeListView()
-            case .insights:    InsightFeedView()
-            case .decisions:   DecisionHistoryView()
-            case .memory:      MemoryExplorerView()
-            case .weeklyReview: WeeklyReviewView()
-            case .decisionReplay: DecisionReplayView()
-            case .signalQueues: SignalWorkbenchView()
-            case .recurringPatterns: SignalWorkbenchView(focus: .recurringPatterns)
-            case .unresolvedTensions: SignalWorkbenchView(focus: .unresolvedTensions)
-            case .contentCandidates: SignalWorkbenchView(focus: .contentCandidates)
-            case .newsletter: NewsletterWorkbenchView()
-            case .settings:    SettingsView()
-            case nil:          DailyFocusView()
+        ZStack {
+            NavigationSplitView(columnVisibility: $columnVisibility) {
+                List(selection: $selection) {
+                    sidebarGroup("Now", items: MacSection.coreSidebar)
+                    sidebarGroup("Review", items: MacSection.reviewSidebar)
+                    sidebarGroup("Create", items: MacSection.publishSidebar)
+                    sidebarGroup("Control", items: MacSection.systemSidebar)
+                }
+                .navigationTitle("SimpliXio")
+                .listStyle(.sidebar)
+                .safeAreaPadding(.top, 80)
+                .foregroundStyle(CortexColor.textPrimary)
+                .navigationSplitViewColumnWidth(min: 220, ideal: 240, max: 300)
+            } detail: {
+                switch selection {
+                case .focus:       DailyFocusView()
+                case .capture:     QuickCaptureView()
+                case .notes:       KnowledgeListView()
+                case .insights:    InsightFeedView()
+                case .decisions:   DecisionHistoryView()
+                case .memory:      MemoryExplorerView()
+                case .weeklyReview: WeeklyReviewView()
+                case .decisionReplay: DecisionReplayView()
+                case .signalQueues: SignalWorkbenchView()
+                case .recurringPatterns: SignalWorkbenchView(focus: .recurringPatterns)
+                case .unresolvedTensions: SignalWorkbenchView(focus: .unresolvedTensions)
+                case .contentCandidates: SignalWorkbenchView(focus: .contentCandidates)
+                case .newsletter: NewsletterWorkbenchView()
+                case .settings:    SettingsView()
+                case nil:          DailyFocusView()
+                }
             }
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("mac.root")
         .onChange(of: selection) { _, _ in
             // Keep the workbench navigation stable when switching sections.
             columnVisibility = .all
         }
         .onAppear {
-            if selection == nil {
-                selection = .focus
-            }
+            selection = launchSelection ?? selection ?? .focus
             columnVisibility = .all
         }
         .environmentObject(engine)
@@ -188,21 +195,27 @@ struct ContentView: View {
 
     @ViewBuilder
     private func sidebarGroup(_ title: String, items: [MacSection]) -> some View {
-        Text(title.uppercased())
-            .font(CortexFont.captionMedium)
-            .foregroundStyle(CortexColor.textTertiary)
-            .padding(.top, CortexSpacing.xs)
-            .padding(.bottom, CortexSpacing.xxs)
-            .textCase(nil)
-            .listRowInsets(EdgeInsets(top: 6, leading: 14, bottom: 2, trailing: 10))
-            .listRowSeparator(.hidden)
-
-        ForEach(items, id: \.self) { section in
-            Label(section.title, systemImage: section.systemImage)
-                .tag(section)
-                .accessibilityLabel(section.title)
-                .accessibilityIdentifier("sidebar.\(section.accessibilityID)")
+        Section {
+            ForEach(items, id: \.self) { section in
+                Label(section.title, systemImage: section.systemImage)
+                    .tag(section)
+                    .accessibilityLabel(section.title)
+                    .accessibilityIdentifier("sidebar.\(section.accessibilityID)")
+            }
+        } header: {
+            Text(title.uppercased())
+                .font(CortexFont.captionMedium)
+                .foregroundStyle(CortexColor.textTertiary)
+                .textCase(nil)
         }
+    }
+
+    private var launchSelection: MacSection? {
+        guard let index = launchArguments.firstIndex(of: "-mac-section"),
+              launchArguments.indices.contains(index + 1) else {
+            return nil
+        }
+        return MacSection(launchArgument: launchArguments[index + 1])
     }
 
     enum MacSection: Hashable, CaseIterable {
@@ -288,6 +301,26 @@ struct ContentView: View {
             case .contentCandidates: "contentCandidates"
             case .newsletter: "newsletter"
             case .settings: "settings"
+            }
+        }
+
+        init?(launchArgument: String) {
+            switch launchArgument {
+            case "focus": self = .focus
+            case "capture": self = .capture
+            case "notes": self = .notes
+            case "insights": self = .insights
+            case "decisions": self = .decisions
+            case "memory": self = .memory
+            case "weeklyReview": self = .weeklyReview
+            case "decisionReplay": self = .decisionReplay
+            case "reviewQueue": self = .signalQueues
+            case "recurringPatterns": self = .recurringPatterns
+            case "unresolvedTensions": self = .unresolvedTensions
+            case "contentCandidates": self = .contentCandidates
+            case "newsletter": self = .newsletter
+            case "settings": self = .settings
+            default: return nil
             }
         }
     }
