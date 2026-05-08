@@ -308,10 +308,18 @@ lane :all_testflight do |options|
 
   UI.message("Using shared build number #{shared_build_number} and version #{shared_version} for iOS, macOS, and watchOS.")
 
+  # Auto-detect watchOS availability; only fail hard if the user explicitly passes strict_watch:true.
+  watch_destinations, watch_status = Open3.capture2e(
+    "xcodebuild", "-showdestinations", "-scheme", "CortexOS-watchOS", "-project", PROJECT,
+  )
+  watchos_available = watch_status.success? &&
+                      watch_destinations.include?("platform:watchOS") &&
+                      !watch_destinations.include?("is not installed")
+
   strict_watch = if options.key?(:strict_watch)
     options[:strict_watch]
   else
-    true
+    watchos_available
   end
 
   shared_options = options.merge(
@@ -320,7 +328,12 @@ lane :all_testflight do |options|
     strict_watch: strict_watch,
   )
 
-  UI.message("watchOS upload is required in all_testflight. Use strict_watch:false only for local diagnostics.")
+  if watchos_available
+    UI.message("watchOS platform detected — will upload watchOS build.")
+  else
+    UI.important("watchOS platform not detected in this Xcode install — skipping watchOS upload.")
+    UI.important("Install watchOS from Xcode > Settings > Components to enable watchOS uploads.")
+  end
 
   Fastlane::LaneManager.cruise_lane("ios", "testflight_release", shared_options)
   UI.success("iOS TestFlight upload completed.")
