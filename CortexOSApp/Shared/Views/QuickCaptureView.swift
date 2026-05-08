@@ -68,7 +68,7 @@ struct QuickCaptureView: View {
                     Text("Capture without sorting first")
                         .font(CortexFont.title)
                         .foregroundStyle(CortexColor.textPrimary)
-                    Text("Drop the messy input here. SimpliXio filters it later into priorities, why, and action.")
+                    Text("Drop the messy input here. SimpliXio filters it later into 3 priorities, why, and one next action.")
                         .font(CortexFont.body)
                         .foregroundStyle(CortexColor.textSecondary)
                 }
@@ -281,6 +281,7 @@ private struct CaptureEditorCard: View {
 
 private enum CaptureMode: String, CaseIterable, Identifiable {
     case thought
+    case note
     case question
     case tension
     case link
@@ -292,6 +293,7 @@ private enum CaptureMode: String, CaseIterable, Identifiable {
     var label: String {
         switch self {
         case .thought: "Thought"
+        case .note: "Note"
         case .question: "Question"
         case .tension: "Tension"
         case .link: "Link"
@@ -303,6 +305,7 @@ private enum CaptureMode: String, CaseIterable, Identifiable {
     var editorTitle: String {
         switch self {
         case .thought: "Thought"
+        case .note: "Note"
         case .question: "Question"
         case .tension: "Tension"
         case .link: "Link"
@@ -314,6 +317,7 @@ private enum CaptureMode: String, CaseIterable, Identifiable {
     var placeholder: String {
         switch self {
         case .thought: "What is taking mental space?"
+        case .note: "What should SimpliXio remember?"
         case .question: "What question keeps coming back?"
         case .tension: "What feels unresolved or blocked?"
         case .link: "Paste the link and why it matters."
@@ -325,6 +329,7 @@ private enum CaptureMode: String, CaseIterable, Identifiable {
     var systemImage: String {
         switch self {
         case .thought: "text.bubble"
+        case .note: "note.text"
         case .question: "questionmark.circle"
         case .tension: "exclamationmark.triangle"
         case .link: "link"
@@ -336,6 +341,7 @@ private enum CaptureMode: String, CaseIterable, Identifiable {
     var noteTag: String {
         switch self {
         case .thought: "thought"
+        case .note: "note"
         case .question: "question"
         case .tension: "tension"
         case .link: "link"
