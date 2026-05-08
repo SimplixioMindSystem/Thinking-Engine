@@ -1,0 +1,351 @@
+# SimpliXio Fastlane Configuration
+# ---------------------------------
+# Automated build + TestFlight deployment for iOS, macOS, and watchOS.
+# Uses App Store Connect API Key for authentication (no password/2FA needed).
+#
+# Usage:
+#   cd CortexOSApp
+#   fastlane ios_testflight version:1.1.3    — build iOS + upload to TestFlight
+#   fastlane mac_testflight version:1.1.3    — build macOS + upload to TestFlight
+#   fastlane all_testflight version:1.1.3    — iOS + macOS + watchOS (shared build number)
+
+default_platform(:ios)
+require "open3"
+require "rubygems"
+require "spaceship"
+
+# All sensitive values are loaded from fastlane/.env (never committed).
+# See fastlane/.env.example for the required keys.
+TEAM_ID       = ENV.fetch("TEAM_ID")                    unless defined?(TEAM_ID)
+IOS_BUNDLE    = ENV.fetch("IOS_BUNDLE")                  unless defined?(IOS_BUNDLE)
+WIDGET_BUNDLE = ENV.fetch("WIDGET_BUNDLE")               unless defined?(WIDGET_BUNDLE)
+MAC_BUNDLE    = ENV.fetch("MAC_BUNDLE")                  unless defined?(MAC_BUNDLE)
+WATCH_BUNDLE  = ENV.fetch("WATCH_BUNDLE")                unless defined?(WATCH_BUNDLE)
+PROJECT       = "CortexOS.xcodeproj"                    unless defined?(PROJECT)
+
+# App Store Connect API Key
+ASC_KEY_ID   = ENV.fetch("ASC_KEY_ID")                   unless defined?(ASC_KEY_ID)
+ASC_ISSUER   = ENV.fetch("ASC_ISSUER")                   unless defined?(ASC_ISSUER)
+ASC_KEY_PATH = File.expand_path(ENV.fetch("ASC_KEY_PATH")) unless defined?(ASC_KEY_PATH)
+
+unless File.file?(ASC_KEY_PATH)
+  UI.user_error!("ASC_KEY_PATH must point to an existing App Store Connect API key file.")
+end
+
+# Xcargs for automatic provisioning with API key
+SIGN_ARGS = [
+  "DEVELOPMENT_TEAM=#{TEAM_ID}",
+  "CODE_SIGN_STYLE=Automatic",
+  "-allowProvisioningUpdates",
+  "-authenticationKeyPath #{ASC_KEY_PATH}",
+  "-authenticationKeyID #{ASC_KEY_ID}",
+  "-authenticationKeyIssuerID #{ASC_ISSUER}",
+].join(" ") unless defined?(SIGN_ARGS)
+
+# ── Xcode project regen ────────────────────────────────────
+
+before_all do
+  if system("which xcodegen > /dev/null 2>&1")
+    sh("cd .. && LOCAL_YAML=1 xcodegen generate 2>&1")
+    UI.message("Regenerated Xcode project from project.yml (with local team settings)")
+  end
+
+  # Authenticate with App Store Connect API
+  app_store_connect_api_key(
+    key_id: ASC_KEY_ID,
+    issuer_id: ASC_ISSUER,
+    key_filepath: ASC_KEY_PATH,
+    duration: 1200,
+    in_house: false,
+  )
+end
+
+# ── Release version helpers ────────────────────────────────
+
+def resolve_release_version(options = {})
+  value = options[:version] || ENV["VERSION_NUMBER"] || ENV["APP_VERSION"]
+  value = value.to_s.strip
+  value.empty? ? nil : value
+end
+
+def next_patch_version(version)
+  match = version.to_s.strip.match(/^(\d+)\.(\d+)\.(\d+)$/)
+  UI.user_error!("Invalid MARKETING_VERSION '#{version}'. Expected semantic version x.y.z.") unless match
+
+  major = match[1].to_i
+  minor = match[2].to_i
+  patch = match[3].to_i + 1
+  "#{major}.#{minor}.#{patch}"
+end
+
+def parse_semver(version)
+  Gem::Version.new(version.to_s.strip)
+rescue StandardError
+  nil
+end
+
+def fetch_latest_store_version(bundle_id:, platform:)
+  app = Spaceship::ConnectAPI::App.find(bundle_id: bundle_id)
+  return nil if app.nil?
+
+  latest = begin
+    app.get_latest_app_store_version(platform: platform)
+  rescue ArgumentError
+    app.get_latest_app_store_version(platform)
+  end
+  return nil if latest.nil?
+
+  version = latest.version_string.to_s.strip
+  return nil if version.empty?
+
+  parse_semver(version) ? version : nil
+rescue StandardError => e
+  UI.important("Could not read latest App Store version for #{bundle_id} (#{platform}): #{e.message}")
+  nil
+end
+
+def highest_version(candidates)
+  versions = candidates
+    .map { |v| [v, parse_semver(v)] }
+    .reject { |(_, semver)| semver.nil? }
+
+  return nil if versions.empty?
+
+  versions.max_by { |(_, semver)| semver }.first
+end
+
+def next_safe_auto_version(current_version)
+  latest_ios = fetch_latest_store_version(
+    bundle_id: IOS_BUNDLE,
+    platform: Spaceship::ConnectAPI::Platform::IOS,
+  )
+  latest_mac = fetch_latest_store_version(
+    bundle_id: MAC_BUNDLE,
+    platform: Spaceship::ConnectAPI::Platform::MAC_OS,
+  )
+
+  if latest_ios.nil? && latest_mac.nil?
+    UI.user_error!(
+      "Unable to read latest App Store versions for iOS/macOS. " \
+      "Use an explicit higher version, for example: fastlane all_testflight version:1.1.6"
+    )
+  end
+
+  baseline = highest_version([current_version, latest_ios, latest_mac])
+  UI.user_error!("Unable to determine baseline release version.") if baseline.nil?
+
+  next_patch_version(baseline)
+end
+
+def apply_release_version_if_requested(options = {})
+  current_version = get_version_number(
+    xcodeproj: PROJECT,
+    target: "CortexOS-iOS",
+  )
+  requested_version = resolve_release_version(options)
+
+  if requested_version.nil?
+    bumped_version = next_safe_auto_version(current_version)
+    UI.success("Will build with MARKETING_VERSION #{bumped_version} (safe auto-version from #{current_version}).")
+    return bumped_version
+  end
+
+  unless requested_version.match?(/^\d+\.\d+\.\d+$/)
+    UI.user_error!("Invalid version '#{requested_version}'. Use semantic version format x.y.z.")
+  end
+
+  UI.message("Will build with MARKETING_VERSION #{requested_version}.")
+  requested_version
+end
+
+def next_build_number
+  Time.now.utc.strftime("%Y%m%d%H%M%S")
+end
+
+def resolve_build_number(options = {})
+  explicit = options[:build_number] || ENV["BUILD_NUMBER"]
+  value = explicit.to_s.strip
+  return value unless value.empty?
+
+  next_build_number
+end
+
+# ── iOS TestFlight ──────────────────────────────────────────
+
+platform :ios do
+  desc "Build iOS and upload to TestFlight"
+  lane :testflight_release do |options|
+    version      = apply_release_version_if_requested(options)
+    build_number = resolve_build_number(options)
+
+    build_app(
+      project: PROJECT,
+      scheme: "CortexOS-iOS",
+      clean: true,
+      export_method: "app-store",
+      xcargs: "#{SIGN_ARGS} MARKETING_VERSION=#{version} CURRENT_PROJECT_VERSION=#{build_number}",
+    )
+
+    upload_to_testflight(
+      skip_waiting_for_build_processing: true,
+      app_identifier: IOS_BUNDLE,
+      uses_non_exempt_encryption: false,
+    )
+
+    UI.success("iOS build #{build_number} (#{version}) uploaded to TestFlight.")
+  end
+end
+
+# ── macOS TestFlight ────────────────────────────────────────
+
+platform :mac do
+  desc "Build macOS and upload to TestFlight"
+  lane :testflight_release do |options|
+    version      = apply_release_version_if_requested(options)
+    build_number = resolve_build_number(options)
+
+    build_app(
+      project: PROJECT,
+      scheme: "CortexOS-macOS",
+      clean: true,
+      export_method: "app-store",
+      xcargs: "#{SIGN_ARGS} MARKETING_VERSION=#{version} CURRENT_PROJECT_VERSION=#{build_number}",
+    )
+
+    upload_to_testflight(
+      skip_waiting_for_build_processing: true,
+      app_platform: "osx",
+      app_identifier: MAC_BUNDLE,
+      uses_non_exempt_encryption: false,
+      pkg: lane_context[SharedValues::PKG_OUTPUT_PATH],
+    )
+
+    UI.success("macOS build #{build_number} (#{version}) uploaded to TestFlight.")
+  end
+end
+
+# ── Convenience aliases ─────────────────────────────────────
+
+desc "iOS TestFlight (alias)"
+lane :ios_testflight do |options|
+  Fastlane::LaneManager.cruise_lane("ios", "testflight_release", options)
+end
+
+desc "macOS TestFlight (alias)"
+lane :mac_testflight do |options|
+  Fastlane::LaneManager.cruise_lane("mac", "testflight_release", options)
+end
+
+desc "watchOS TestFlight"
+lane :watch_testflight do |options|
+  strict_watch_publish = if options[:strict_watch].nil?
+    true
+  else
+    !["false", "0", "no"].include?(options[:strict_watch].to_s.strip.downcase)
+  end
+  destinations, status = Open3.capture2e(
+    "xcodebuild",
+    "-showdestinations",
+    "-scheme",
+    "CortexOS-watchOS",
+    "-project",
+    PROJECT,
+  )
+
+  has_watch_destination = status.success? && destinations.include?("platform:watchOS")
+  has_missing_platform_error = destinations.include?("is not installed")
+
+  if !has_watch_destination || has_missing_platform_error
+    message = "watchOS upload blocked: watchOS platform is not available in this Xcode install."
+    install_hint = "Install watchOS from Xcode > Settings > Components, then run `fastlane watch_testflight`."
+    if strict_watch_publish
+      UI.user_error!("#{message} #{install_hint}")
+    else
+      UI.important("Skipping watchOS upload: #{message}")
+      UI.important(install_hint)
+      next
+    end
+  end
+
+  version      = apply_release_version_if_requested(options)
+  build_number = resolve_build_number(options)
+
+  build_app(
+    project: PROJECT,
+    scheme: "CortexOS-watchOS",
+    destination: "generic/platform=watchOS",
+    clean: true,
+    export_method: "app-store",
+    xcargs: "#{SIGN_ARGS} MARKETING_VERSION=#{version} CURRENT_PROJECT_VERSION=#{build_number}",
+  )
+
+  upload_to_testflight(
+    skip_waiting_for_build_processing: true,
+    app_identifier: WATCH_BUNDLE,
+    uses_non_exempt_encryption: false,
+  )
+
+  UI.success("watchOS build #{build_number} uploaded to TestFlight.")
+end
+
+desc "Build and upload iOS, macOS, and watchOS to TestFlight"
+lane :all_testflight do |options|
+  shared_build_number = options[:build_number] || next_build_number
+
+  # Resolve version ONCE here so that xcodegen resets inside before_all
+  # (which runs before each sub-lane) do not cause each platform to
+  # independently re-compute and land on the same already-approved version.
+  current_version = get_version_number(
+    xcodeproj: PROJECT,
+    target: "CortexOS-iOS",
+  )
+  requested_version = resolve_release_version(options)
+  shared_version = if requested_version.nil?
+    next_safe_auto_version(current_version)
+  else
+    requested_version
+  end
+
+  UI.message("Using shared build number #{shared_build_number} and version #{shared_version} for iOS, macOS, and watchOS.")
+
+  strict_watch = if options.key?(:strict_watch)
+    options[:strict_watch]
+  else
+    true
+  end
+
+  shared_options = options.merge(
+    build_number: shared_build_number,
+    version: shared_version,
+    strict_watch: strict_watch,
+  )
+
+  UI.message("watchOS upload is required in all_testflight. Use strict_watch:false only for local diagnostics.")
+
+  Fastlane::LaneManager.cruise_lane("ios", "testflight_release", shared_options)
+  UI.success("iOS TestFlight upload completed.")
+  Fastlane::LaneManager.cruise_lane("mac", "testflight_release", shared_options)
+  UI.success("macOS TestFlight upload completed.")
+  watch_testflight(shared_options)
+  UI.success("watchOS TestFlight upload completed.")
+end
+
+desc "Regenerate App Store provisioning profiles (iOS app + widget)"
+lane :refresh_profiles do
+  sigh(
+    app_identifier: IOS_BUNDLE,
+    skip_install: false,
+    skip_certificate_verification: true
+  )
+
+  sigh(
+    app_identifier: WIDGET_BUNDLE,
+    skip_install: false,
+    skip_certificate_verification: true
+  )
+end
+
+desc "Generate App Store screenshot assets (iOS/macOS/watchOS)"
+lane :generate_store_assets do
+  sh("cd .. && ./.venv/bin/python scripts/generate_store_assets.py")
+end
