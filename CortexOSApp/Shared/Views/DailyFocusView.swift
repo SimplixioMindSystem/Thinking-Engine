@@ -280,7 +280,7 @@ struct DailyFocusView: View {
                     Text("Capture what is noisy")
                         .font(CortexFont.bodyMedium)
                         .foregroundStyle(CortexColor.textPrimary)
-                    Text("Thought, link, question, tension, or decision.")
+                    Text("Thought, note, link, question, tension, or decision.")
                         .font(CortexFont.caption)
                         .foregroundStyle(CortexColor.textSecondary)
                 }
