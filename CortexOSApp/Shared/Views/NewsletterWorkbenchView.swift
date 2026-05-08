@@ -96,6 +96,12 @@ struct NewsletterWorkbenchView: View {
             Label("Strict safety enabled. Human approval required before publishing.", systemImage: "checkmark.shield")
                 .font(CortexFont.caption)
                 .foregroundStyle(CortexColor.textSecondary)
+
+            if engine.api.isOffline {
+                Label("Newsletter drafting needs a server connection. Captures still stay private locally.", systemImage: "wifi.slash")
+                    .font(CortexFont.caption)
+                    .foregroundStyle(CortexColor.warning)
+            }
         }
         .cortexSurfaceCard()
     }
@@ -195,6 +201,10 @@ struct NewsletterWorkbenchView: View {
                         .font(CortexFont.caption)
                         .foregroundStyle(CortexColor.textSecondary)
                 }
+            } else if engine.api.isOffline {
+                Text("Connect a server before generating a public-safe draft.")
+                    .font(CortexFont.caption)
+                    .foregroundStyle(CortexColor.warning)
             } else {
                 Text("Private by default. Public drafts require redaction, safety checks, and manual approval.")
                     .font(CortexFont.caption)
@@ -222,6 +232,10 @@ struct NewsletterWorkbenchView: View {
                 Text("Status: \(status)")
                     .font(CortexFont.caption)
                     .foregroundStyle(CortexColor.textTertiary)
+            } else if engine.api.isOffline {
+                Text("Draft generation is unavailable in local offline mode.")
+                    .font(CortexFont.caption)
+                    .foregroundStyle(CortexColor.warning)
             }
         }
     }
@@ -243,7 +257,7 @@ struct NewsletterWorkbenchView: View {
                     ProgressView()
                         .controlSize(.small)
                 }
-                Text(isGeneratingDraft ? "Generating…" : "Draft from safe material")
+                Text(primaryDraftButtonTitle)
             }
             .frame(maxWidth: .infinity)
         }
@@ -265,6 +279,9 @@ struct NewsletterWorkbenchView: View {
     }
 
     private var canGenerate: Bool {
+        if engine.api.isOffline {
+            return false
+        }
         if engine.isSyncing || isGeneratingDraft {
             return false
         }
@@ -272,6 +289,16 @@ struct NewsletterWorkbenchView: View {
             return count > 0
         }
         return true
+    }
+
+    private var primaryDraftButtonTitle: String {
+        if isGeneratingDraft {
+            return "Generating..."
+        }
+        if engine.api.isOffline {
+            return "Connect server to draft"
+        }
+        return "Draft from safe material"
     }
 
     @ViewBuilder
