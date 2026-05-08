@@ -66,7 +66,7 @@ struct SettingsView: View {
                 settingsCard("Privacy & Trust") { trustSectionBody }
                 settingsCard("Identity") { identitySectionBody }
                 settingsCard("About") { aboutSectionBody }
-                settingsCard("Sample Data") { demoSectionBody }
+                settingsCard("Preview Content") { demoSectionBody }
                 settingsCard("Project") { projectSectionBody }
                 settingsCard("Author") { authorSectionBody }
             }
@@ -162,13 +162,13 @@ struct SettingsView: View {
         Section {
             demoSectionBody
         } header: {
-            Text("Sample Data")
+            Text("Preview Content")
         }
     }
 
     @ViewBuilder
     private var demoSectionBody: some View {
-        Toggle("Show sample content", isOn: $demoModeEnabled)
+        Toggle("Show preview content", isOn: $demoModeEnabled)
             .font(CortexFont.bodyMedium)
             .onChange(of: demoModeEnabled) { _, enabled in
                 Task {
@@ -186,7 +186,7 @@ struct SettingsView: View {
             }
         } label: {
             HStack(spacing: CortexSpacing.xs) {
-                Text("Load sample priorities")
+                Text("Load preview priorities")
                 if isPreparingDemo {
                     ProgressView()
                         .controlSize(.small)
@@ -196,7 +196,7 @@ struct SettingsView: View {
         .buttonStyle(CortexSecondaryButtonStyle())
         .disabled(isPreparingDemo)
 
-        Text("Use sample content to understand the product before your own captures build up.")
+        Text("Use clearly marked preview content to understand the product before your own captures build up.")
             .font(CortexFont.caption)
             .foregroundStyle(CortexColor.textTertiary)
 
