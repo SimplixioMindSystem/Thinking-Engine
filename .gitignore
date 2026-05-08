@@ -29,8 +29,7 @@ scripts/*
 *.tmp
 tmp/
 
-# Fastlane config files
-CortexOSApp/fastlane/Fastfile
+# Fastlane config files (Appfile has personal email – keep ignored)
 CortexOSApp/fastlane/Appfile
 
 # macOS
