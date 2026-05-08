@@ -88,11 +88,9 @@ def fetch_latest_store_version(bundle_id:, platform:)
   app = Spaceship::ConnectAPI::App.find(bundle_id: bundle_id)
   return nil if app.nil?
 
-  latest = begin
-    app.get_latest_app_store_version(platform: platform)
-  rescue ArgumentError
-    app.get_latest_app_store_version(platform)
-  end
+  # Spaceship API accepts positional platform string (e.g. "IOS", "MAC_OS")
+  platform_str = platform.to_s
+  latest = app.get_latest_app_store_version(platform_str)
   return nil if latest.nil?
 
   version = latest.version_string.to_s.strip
@@ -125,10 +123,8 @@ def next_safe_auto_version(current_version)
   )
 
   if latest_ios.nil? && latest_mac.nil?
-    UI.user_error!(
-      "Unable to read latest App Store versions for iOS/macOS. " \
-      "Use an explicit higher version, for example: fastlane all_testflight version:1.1.6"
-    )
+    UI.important("Could not query App Store versions — falling back to bumping current project version #{current_version}.")
+    return next_patch_version(current_version)
   end
 
   baseline = highest_version([current_version, latest_ios, latest_mac])
