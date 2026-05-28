@@ -51,6 +51,9 @@ struct DailyFocusView: View {
         .background(CortexColor.bgPrimary)
         .accessibilityIdentifier("focus.screen")
         .navigationTitle("Focus")
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+        #endif
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 if let shareText = todayShareText {
@@ -139,15 +142,13 @@ struct DailyFocusView: View {
 
     @ViewBuilder
     private func focusContent(_ brief: PriorityBrief) -> some View {
-        let needsScroll = brief.priorities.count > 3
-
-        Group {
-            if needsScroll {
-                ScrollView { focusBody(brief) }
-            } else {
-                focusBody(brief)
-            }
+        ScrollView {
+            focusBody(brief)
+                .padding(.bottom, CortexSpacing.xxl)
         }
+        #if os(iOS)
+        .scrollDismissesKeyboard(.interactively)
+        #endif
     }
 
     @ViewBuilder
@@ -159,9 +160,11 @@ struct DailyFocusView: View {
                 Text("Today’s 3 priorities")
                     .font(CortexFont.title)
                     .foregroundStyle(CortexColor.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text("Why they matter. One next action. Everything else stays quiet.")
                     .font(CortexFont.caption)
                     .foregroundStyle(CortexColor.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             focusStatusStrip
@@ -254,16 +257,20 @@ struct DailyFocusView: View {
 
     @ViewBuilder
     private var focusStatusStrip: some View {
-        HStack(spacing: CortexSpacing.sm) {
+        VStack(alignment: .leading, spacing: CortexSpacing.xs) {
             if let status = engine.lastSyncStatus {
                 Label(status, systemImage: engine.isConnected ? "checkmark.circle" : "wifi.slash")
                     .font(CortexFont.caption)
                     .foregroundStyle(CortexColor.textTertiary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             if let updated = lastUpdatedLabel {
                 Text(updated)
                     .font(CortexFont.caption)
                     .foregroundStyle(CortexColor.textTertiary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -276,14 +283,23 @@ struct DailyFocusView: View {
                     .font(.title3)
                     .foregroundStyle(CortexColor.accent)
 
-                VStack(alignment: .leading, spacing: CortexSpacing.xxs) {
-                    Text("Capture what is noisy")
-                        .font(CortexFont.bodyMedium)
-                        .foregroundStyle(CortexColor.textPrimary)
-                    Text("Thought, note, link, question, tension, or decision.")
-                        .font(CortexFont.caption)
-                        .foregroundStyle(CortexColor.textSecondary)
+                VStack(alignment: .leading, spacing: CortexSpacing.lg) {
+                    VStack(alignment: .leading, spacing: CortexSpacing.xs) {
+                        Text("Today’s 3 priorities")
+                            .font(CortexFont.title)
+                            .foregroundStyle(CortexColor.textPrimary)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .layoutPriority(2)
+                        Text("Why they matter. One next action. Everything else stays quiet.")
+                            .font(CortexFont.caption)
+                            .foregroundStyle(CortexColor.textSecondary)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .layoutPriority(1)
+                    }
                 }
+                .layoutPriority(1)
 
                 Spacer(minLength: 0)
 
@@ -391,14 +407,14 @@ struct DailyFocusView: View {
 
     @ViewBuilder
     private func nextActionCard(_ action: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: CortexSpacing.sm) {
+        VStack(alignment: .leading, spacing: CortexSpacing.xs) {
             Text("One next action")
                 .font(CortexFont.captionMedium)
                 .foregroundStyle(CortexColor.textTertiary)
             Text(action)
                 .font(CortexFont.bodyMedium)
                 .foregroundStyle(CortexColor.textPrimary)
-                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .cortexSurfaceCard(padding: CortexSpacing.md)
@@ -513,7 +529,9 @@ private struct HeroPriorityCard: View {
             Text(priority.title)
                 .font(.system(size: 20, weight: .bold))
                 .foregroundStyle(CortexColor.textPrimary)
+                .lineLimit(3)
                 .fixedSize(horizontal: false, vertical: true)
+                .layoutPriority(2)
 
             // Why
             if !priority.whyItMatters.isEmpty {
@@ -583,18 +601,23 @@ private struct FocusPriorityCard: View {
                     Text(priority.title)
                         .font(CortexFont.bodyMedium)
                         .foregroundStyle(CortexColor.textPrimary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .layoutPriority(2)
 
                     if !priority.whyItMatters.isEmpty {
                         Text(priority.whyItMatters)
                             .font(CortexFont.caption)
                             .foregroundStyle(CortexColor.textSecondary)
                             .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
 
                     if !priority.nextStep.isEmpty {
                         Label {
                             Text(priority.nextStep)
                                 .lineLimit(1)
+                                .fixedSize(horizontal: false, vertical: true)
                         } icon: {
                             Image(systemName: "arrow.right.circle.fill")
                         }
