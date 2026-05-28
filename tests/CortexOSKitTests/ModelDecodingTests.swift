@@ -106,7 +106,8 @@ final class KnowledgeNoteTests: XCTestCase {
     }
 
     func testDisplayTags() {
-        let note = KnowledgeNote.example
+        var note = KnowledgeNote.example
+        note.tags = ["AI", "retrieval"]
         XCTAssertTrue(note.displayTags.contains("#AI"))
         XCTAssertTrue(note.displayTags.contains("#retrieval"))
     }
