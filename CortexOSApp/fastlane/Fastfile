@@ -10,8 +10,10 @@
 #   fastlane all_testflight version:1.1.3    — iOS + macOS + watchOS (shared build number)
 
 default_platform(:ios)
+require "fileutils"
 require "open3"
 require "rubygems"
+require "shellwords"
 require "spaceship"
 
 # All sensitive values are loaded from fastlane/.env (never committed).
@@ -22,6 +24,7 @@ WIDGET_BUNDLE = ENV.fetch("WIDGET_BUNDLE")               unless defined?(WIDGET_
 MAC_BUNDLE    = ENV.fetch("MAC_BUNDLE")                  unless defined?(MAC_BUNDLE)
 WATCH_BUNDLE  = ENV.fetch("WATCH_BUNDLE")                unless defined?(WATCH_BUNDLE)
 PROJECT       = "CortexOS.xcodeproj"                    unless defined?(PROJECT)
+APP_ROOT      = File.expand_path("..", __dir__)          unless defined?(APP_ROOT)
 
 # App Store Connect API Key
 ASC_KEY_ID   = ENV.fetch("ASC_KEY_ID")                   unless defined?(ASC_KEY_ID)
@@ -158,12 +161,84 @@ def next_build_number
   Time.now.utc.strftime("%Y%m%d%H%M%S")
 end
 
+def project_spec_path
+  File.join(APP_ROOT, "project.yml")
+end
+
+def persist_project_release_settings!(version:, build_number:)
+  spec_path = project_spec_path
+  UI.user_error!("Missing project spec at #{spec_path}") unless File.file?(spec_path)
+
+  contents = File.read(spec_path)
+  updated = contents
+    .sub(/^(\s*MARKETING_VERSION:\s*)"[^"]*"/, "\\1\"#{version}\"")
+    .sub(/^(\s*CURRENT_PROJECT_VERSION:\s*)"[^"]*"/, "\\1\"#{build_number}\"")
+
+  if updated == contents
+    UI.user_error!("Unable to update MARKETING_VERSION/CURRENT_PROJECT_VERSION in #{spec_path}.")
+  end
+
+  File.write(spec_path, updated)
+  sh("cd .. && LOCAL_YAML=1 xcodegen generate 2>&1")
+  UI.success("Persisted release version #{version} build #{build_number} in project.yml and regenerated the Xcode project.")
+end
+
 def resolve_build_number(options = {})
   explicit = options[:build_number] || ENV["BUILD_NUMBER"]
   value = explicit.to_s.strip
   return value unless value.empty?
 
   next_build_number
+end
+
+def xcodebuild_output(*args)
+  Dir.chdir(APP_ROOT) do
+    Open3.capture2e("xcodebuild", *args)
+  end
+end
+
+def shell_join(args)
+  args.map(&:to_s).shelljoin
+end
+
+def write_export_options(path, method:)
+  File.write(path, <<~PLIST)
+    <?xml version="1.0" encoding="UTF-8"?>
+    <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+    <plist version="1.0">
+    <dict>
+      <key>method</key>
+      <string>#{method}</string>
+      <key>signingStyle</key>
+      <string>automatic</string>
+      <key>teamID</key>
+      <string>#{TEAM_ID}</string>
+    </dict>
+    </plist>
+  PLIST
+end
+
+def ios_project_embeds_watch?
+  pbxproj = File.join(APP_ROOT, PROJECT, "project.pbxproj")
+  File.file?(pbxproj) && File.read(pbxproj).include?("Embed Watch Content")
+end
+
+def verify_embedded_watch_ipa!(ipa_path)
+  UI.user_error!("iOS IPA path is missing, so the embedded watch app cannot be verified.") if ipa_path.to_s.empty?
+  UI.user_error!("iOS IPA does not exist at #{ipa_path}.") unless File.file?(ipa_path)
+
+  contents, status = Open3.capture2e("unzip", "-Z1", ipa_path)
+  unless status.success?
+    UI.user_error!("Unable to inspect iOS IPA for embedded watch app: #{contents}")
+  end
+
+  has_watch_app = contents.lines.any? do |line|
+    line.match?(%r{^Payload/[^/]+\.app/Watch/[^/]+\.app/$})
+  end
+
+  UI.user_error!("iOS IPA does not include an embedded watchOS app under Payload/*.app/Watch/.") unless has_watch_app
+
+  UI.success("Verified iOS IPA includes the embedded watchOS app.")
 end
 
 # ── iOS TestFlight ──────────────────────────────────────────
@@ -239,8 +314,7 @@ lane :watch_testflight do |options|
   else
     !["false", "0", "no"].include?(options[:strict_watch].to_s.strip.downcase)
   end
-  destinations, status = Open3.capture2e(
-    "xcodebuild",
+  destinations, status = xcodebuild_output(
     "-showdestinations",
     "-scheme",
     "CortexOS-watchOS",
@@ -265,17 +339,58 @@ lane :watch_testflight do |options|
 
   version      = apply_release_version_if_requested(options)
   build_number = resolve_build_number(options)
+  watch_build_root = File.join(APP_ROOT, "build", "watchos-testflight")
+  archive_path = File.join(watch_build_root, "SimpliXio Watch #{build_number}.xcarchive")
+  export_path = File.join(watch_build_root, "export")
+  export_options_path = File.join(watch_build_root, "ExportOptions.plist")
 
-  build_app(
-    project: PROJECT,
-    scheme: "CortexOS-watchOS",
-    destination: "generic/platform=watchOS",
-    clean: true,
-    export_method: "app-store",
-    xcargs: "#{SIGN_ARGS} MARKETING_VERSION=#{version} CURRENT_PROJECT_VERSION=#{build_number}",
-  )
+  FileUtils.rm_rf(watch_build_root)
+  FileUtils.mkdir_p(export_path)
+  write_export_options(export_options_path, method: "release-testing")
+
+  archive_args = [
+    "xcodebuild",
+    "-scheme", "CortexOS-watchOS",
+    "-project", PROJECT,
+    "-destination", "generic/platform=watchOS",
+    "-archivePath", archive_path,
+    "DEVELOPMENT_TEAM=#{TEAM_ID}",
+    "CODE_SIGN_STYLE=Automatic",
+    "-allowProvisioningUpdates",
+    "-authenticationKeyPath", ASC_KEY_PATH,
+    "-authenticationKeyID", ASC_KEY_ID,
+    "-authenticationKeyIssuerID", ASC_ISSUER,
+    "MARKETING_VERSION=#{version}",
+    "CURRENT_PROJECT_VERSION=#{build_number}",
+    "SKIP_INSTALL=NO",
+    "clean",
+    "archive",
+  ]
+
+  export_args = [
+    "xcodebuild",
+    "-exportArchive",
+    "-archivePath", archive_path,
+    "-exportOptionsPlist", export_options_path,
+    "-exportPath", export_path,
+    "DEVELOPMENT_TEAM=#{TEAM_ID}",
+    "CODE_SIGN_STYLE=Automatic",
+    "-allowProvisioningUpdates",
+    "-authenticationKeyPath", ASC_KEY_PATH,
+    "-authenticationKeyID", ASC_KEY_ID,
+    "-authenticationKeyIssuerID", ASC_ISSUER,
+  ]
+
+  Dir.chdir(APP_ROOT) do
+    sh(shell_join(archive_args))
+    sh(shell_join(export_args))
+  end
+
+  ipa_path = Dir[File.join(export_path, "*.ipa")].first
+  UI.user_error!("watchOS export did not produce an IPA in #{export_path}.") if ipa_path.nil?
 
   upload_to_testflight(
+    ipa: ipa_path,
     skip_waiting_for_build_processing: true,
     app_identifier: WATCH_BUNDLE,
     uses_non_exempt_encryption: false,
@@ -286,7 +401,7 @@ end
 
 desc "Build and upload iOS, macOS, and watchOS to TestFlight"
 lane :all_testflight do |options|
-  shared_build_number = options[:build_number] || next_build_number
+  shared_build_number = resolve_build_number(options)
 
   # Resolve version ONCE here so that xcodegen resets inside before_all
   # (which runs before each sub-lane) do not cause each platform to
@@ -302,20 +417,35 @@ lane :all_testflight do |options|
     requested_version
   end
 
+  unless shared_version.match?(/^\d+\.\d+\.\d+$/)
+    UI.user_error!("Invalid version '#{shared_version}'. Use semantic version format x.y.z.")
+  end
+
+  persist_project_release_settings!(
+    version: shared_version,
+    build_number: shared_build_number,
+  )
+
   UI.message("Using shared build number #{shared_build_number} and version #{shared_version} for iOS, macOS, and watchOS.")
 
-  # Auto-detect watchOS availability; only fail hard if the user explicitly passes strict_watch:true.
-  watch_destinations, watch_status = Open3.capture2e(
-    "xcodebuild", "-showdestinations", "-scheme", "CortexOS-watchOS", "-project", PROJECT,
-  )
-  watchos_available = watch_status.success? &&
-                      watch_destinations.include?("platform:watchOS") &&
-                      !watch_destinations.include?("is not installed")
+  watch_embedded = ios_project_embeds_watch?
+
+  # Preflight watchOS before uploading anything so all_testflight cannot partially
+  # publish iOS/macOS while silently missing the watch app.
+  watchos_available = false
+  unless watch_embedded
+    watch_destinations, watch_status = xcodebuild_output(
+      "-showdestinations", "-scheme", "CortexOS-watchOS", "-project", PROJECT,
+    )
+    watchos_available = watch_status.success? &&
+                        watch_destinations.match?(/platform:watchOS[, ]/) &&
+                        !watch_destinations.include?("is not installed")
+  end
 
   strict_watch = if options.key?(:strict_watch)
-    options[:strict_watch]
+    !["false", "0", "no"].include?(options[:strict_watch].to_s.strip.downcase)
   else
-    watchos_available
+    true
   end
 
   shared_options = options.merge(
@@ -324,19 +454,31 @@ lane :all_testflight do |options|
     strict_watch: strict_watch,
   )
 
-  if watchos_available
-    UI.message("watchOS platform detected — will upload watchOS build.")
+  if watch_embedded
+    UI.message("watchOS app is embedded in the iOS archive — all_testflight will verify the iOS IPA includes Watch content.")
+  elsif watchos_available
+    UI.message("watchOS platform detected — will upload standalone watchOS build.")
+  elsif strict_watch
+    UI.user_error!(
+      "watchOS upload blocked before iOS/macOS upload: watchOS platform is not available. " \
+      "Install watchOS from Xcode > Settings > Components, then rerun `fastlane all_testflight`."
+    )
   else
     UI.important("watchOS platform not detected in this Xcode install — skipping watchOS upload.")
     UI.important("Install watchOS from Xcode > Settings > Components to enable watchOS uploads.")
   end
 
   Fastlane::LaneManager.cruise_lane("ios", "testflight_release", shared_options)
+  verify_embedded_watch_ipa!(lane_context[SharedValues::IPA_OUTPUT_PATH]) if watch_embedded
   UI.success("iOS TestFlight upload completed.")
   Fastlane::LaneManager.cruise_lane("mac", "testflight_release", shared_options)
   UI.success("macOS TestFlight upload completed.")
-  watch_testflight(shared_options)
-  UI.success("watchOS TestFlight upload completed.")
+  if watch_embedded
+    UI.success("watchOS TestFlight delivery completed through the embedded iOS app.")
+  else
+    watch_testflight(shared_options)
+    UI.success("watchOS TestFlight upload completed.")
+  end
 end
 
 desc "Regenerate App Store provisioning profiles (iOS app + widget)"
