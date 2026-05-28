@@ -19,8 +19,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.9"
-    MARKETING_VERSION: "1.1.4"
-    CURRENT_PROJECT_VERSION: "7"
+    MARKETING_VERSION: "1.1.9"
+    CURRENT_PROJECT_VERSION: "20260527213232"
     CODE_SIGN_STYLE: Automatic
 
 targets:
@@ -37,6 +37,7 @@ targets:
           - "**/.DS_Store"
     dependencies:
       - target: CortexOS-Widget
+      - target: CortexOS-watchOS
     info:
       path: iOS/Info.plist
       properties:
@@ -176,6 +177,7 @@ targets:
       - path: Shared/Design
         excludes:
           - "**/.DS_Store"
+      - path: Shared/Assets.xcassets
       - path: watchOS
         excludes:
           - "**/.DS_Store"
@@ -185,16 +187,17 @@ targets:
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         ITSAppUsesNonExemptEncryption: false
-    entitlements:
-      path: watchOS/CortexOS-watchOS.entitlements
-      properties:
-        com.apple.security.application-groups:
-          - group.me.ph7.cortexos
+        CFBundleIconName: AppIcon
+        WKApplication: true
+        WKCompanionAppBundleIdentifier: me.ph7.cortexos.ios
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: me.ph7.cortexos.watchos
+        PRODUCT_BUNDLE_IDENTIFIER: me.ph7.cortexos.ios.watchos
         PRODUCT_NAME: SimpliXio Watch
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         GENERATE_INFOPLIST_FILE: NO
+        SKIP_INSTALL: YES
         TARGETED_DEVICE_FAMILY: "4"
       configs:
         Debug:
