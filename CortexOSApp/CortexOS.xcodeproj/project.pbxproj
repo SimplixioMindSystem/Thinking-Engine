@@ -29,6 +29,7 @@
 		4EC4DA2D2F83A50C1CD52574 /* SignalWorkbenchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4959C87776EA0B52D76B22E3 /* SignalWorkbenchView.swift */; };
 		5325B0BC982BBDDBE0118C93 /* KnowledgeNote.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7069ADE1D4517A68074A941 /* KnowledgeNote.swift */; };
 		53AED17EEE30BD3659D1E0AF /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7ED83F6AB0177D62051212CE /* APIService.swift */; };
+		5751C6F3B68B292803DE70DB /* CortexOS-watchOS.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = EE01ED8C081A973906010617 /* CortexOS-watchOS.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		599AC0F2169EBA44103864FF /* DecisionReplayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69BD06BB5DCA5D34B3AA4AF1 /* DecisionReplayView.swift */; };
 		5EA3FEF1B505A295927D2771 /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7ED83F6AB0177D62051212CE /* APIService.swift */; };
 		5EB49BCCA4D82078BA878659 /* MemoryExplorerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B9D01C665875FEE55307014 /* MemoryExplorerView.swift */; };
@@ -73,6 +74,7 @@
 		D65AD24A1E24B562E3D365A7 /* InsightCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = D32E0B3A04E3425EAC7332C6 /* InsightCard.swift */; };
 		D6AC8321F0BD49AABB4362B9 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B245C0F1ACBE90E1E66E446B /* Theme.swift */; };
 		DA57948E1DA2B2430F40198D /* ConfidenceIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3A44FD6A1185BFD939E4A49 /* ConfidenceIndicator.swift */; };
+		DCB587E75FE3A372983B8025 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = ED492439B9253F6CF71DC93B /* Assets.xcassets */; };
 		E4F2CBE9498398D474D0D6E6 /* WeeklyReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08589786E44AD390B58F98DD /* WeeklyReviewView.swift */; };
 		E5AA94159D504CF0F1F0C93A /* ContextTag.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA75246885E7EFCE5CCB72D6 /* ContextTag.swift */; };
 		E5AB17A1366B8E9FA89667CC /* ServerHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B2CD3E21B3B4C11494D5E8A /* ServerHealth.swift */; };
@@ -101,6 +103,13 @@
 			remoteGlobalIDString = 478B9E8325E8EDB61C4E58F1;
 			remoteInfo = "CortexOS-macOS";
 		};
+		85B5604CE7B540D1BEB248E7 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A2F7D667D97D8BFD9B246442 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = EAA72848397871234B08D719;
+			remoteInfo = "CortexOS-watchOS";
+		};
 		A68F7547234450640328B60D /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = A2F7D667D97D8BFD9B246442 /* Project object */;
@@ -127,6 +136,17 @@
 				7987FEC145A4FF0FF7CB7688 /* CortexOS-Widget.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B40BF22BBCADCF74CB7D972A /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				5751C6F3B68B292803DE70DB /* CortexOS-watchOS.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -422,11 +442,13 @@
 				3F2C6DDE4A944C1D5E907952 /* Sources */,
 				7B4C0D7EDD61A36F387B0342 /* Resources */,
 				9A1AB0151122F89BB1DECBDE /* Embed Foundation Extensions */,
+				B40BF22BBCADCF74CB7D972A /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				A5AC3871271C87EA4A24803C /* PBXTargetDependency */,
+				A019E1DB7F51FBB33AF04216 /* PBXTargetDependency */,
 			);
 			name = "CortexOS-iOS";
 			packageProductDependencies = (
@@ -440,6 +462,7 @@
 			buildConfigurationList = AD9C8B8412D4D5BE76DA639D /* Build configuration list for PBXNativeTarget "CortexOS-watchOS" */;
 			buildPhases = (
 				323EB34690F263FB198BF927 /* Sources */,
+				593E8FB9D236F108FC1ADC54 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -462,23 +485,29 @@
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					0DA937660E7FA94BC5AA74AC = {
+						DevelopmentTeam = 2V8LZ2444Y;
 						ProvisioningStyle = Automatic;
 						TestTargetID = 9289113ECDE79DBEECBD7E8E;
 					};
 					478B9E8325E8EDB61C4E58F1 = {
+						DevelopmentTeam = 2V8LZ2444Y;
 						ProvisioningStyle = Automatic;
 					};
 					48566068873B85D9B4B03162 = {
+						DevelopmentTeam = 2V8LZ2444Y;
 						ProvisioningStyle = Automatic;
 						TestTargetID = 478B9E8325E8EDB61C4E58F1;
 					};
 					8876A5EE4712EFA940DFC8B5 = {
+						DevelopmentTeam = 2V8LZ2444Y;
 						ProvisioningStyle = Automatic;
 					};
 					9289113ECDE79DBEECBD7E8E = {
+						DevelopmentTeam = 2V8LZ2444Y;
 						ProvisioningStyle = Automatic;
 					};
 					EAA72848397871234B08D719 = {
+						DevelopmentTeam = 2V8LZ2444Y;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -508,6 +537,14 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		593E8FB9D236F108FC1ADC54 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DCB587E75FE3A372983B8025 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		7B4C0D7EDD61A36F387B0342 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -663,6 +700,11 @@
 			target = 478B9E8325E8EDB61C4E58F1 /* CortexOS-macOS */;
 			targetProxy = 52A04D5C5471618CD9E46C33 /* PBXContainerItemProxy */;
 		};
+		A019E1DB7F51FBB33AF04216 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = EAA72848397871234B08D719 /* CortexOS-watchOS */;
+			targetProxy = 85B5604CE7B540D1BEB248E7 /* PBXContainerItemProxy */;
+		};
 		A5AC3871271C87EA4A24803C /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 8876A5EE4712EFA940DFC8B5 /* CortexOS-Widget */;
@@ -706,8 +748,9 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 20260527213232;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 2V8LZ2444Y;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -726,7 +769,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.1.4;
+				MARKETING_VERSION = 1.1.9;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -742,11 +785,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = "watchOS/CortexOS-watchOS.entitlements";
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = watchOS/Info.plist;
-				PRODUCT_BUNDLE_IDENTIFIER = me.ph7.cortexos.watchos;
+				PRODUCT_BUNDLE_IDENTIFIER = me.ph7.cortexos.ios.watchos;
 				PRODUCT_NAME = "SimpliXio Watch";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -889,8 +932,9 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 20260527213232;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 2V8LZ2444Y;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -903,7 +947,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.1.4;
+				MARKETING_VERSION = 1.1.9;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1027,11 +1071,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = "watchOS/CortexOS-watchOS.entitlements";
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = watchOS/Info.plist;
-				PRODUCT_BUNDLE_IDENTIFIER = me.ph7.cortexos.watchos;
+				PRODUCT_BUNDLE_IDENTIFIER = me.ph7.cortexos.ios.watchos;
 				PRODUCT_NAME = "SimpliXio Watch";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
