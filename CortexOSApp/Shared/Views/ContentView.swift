@@ -153,7 +153,11 @@ struct ContentView: View {
                 }
                 .navigationTitle("SimpliXio")
                 .listStyle(.sidebar)
-                .safeAreaPadding(.top, 80)
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    Color.clear
+                        .frame(height: 72)
+                        .allowsHitTesting(false)
+                }
                 .foregroundStyle(CortexColor.textPrimary)
                 .navigationSplitViewColumnWidth(min: 220, ideal: 240, max: 300)
             } detail: {
