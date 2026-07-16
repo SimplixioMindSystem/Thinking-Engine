@@ -285,13 +285,13 @@ struct DailyFocusView: View {
 
                 VStack(alignment: .leading, spacing: CortexSpacing.lg) {
                     VStack(alignment: .leading, spacing: CortexSpacing.xs) {
-                        Text("Today’s 3 priorities")
-                            .font(CortexFont.title)
+                        Text("Capture a thought")
+                            .font(CortexFont.bodyMedium)
                             .foregroundStyle(CortexColor.textPrimary)
-                            .lineLimit(2)
+                            .lineLimit(1)
                             .fixedSize(horizontal: false, vertical: true)
                             .layoutPriority(2)
-                        Text("Why they matter. One next action. Everything else stays quiet.")
+                        Text("Add what is taking mental space. Sort it later.")
                             .font(CortexFont.caption)
                             .foregroundStyle(CortexColor.textSecondary)
                             .lineLimit(2)
