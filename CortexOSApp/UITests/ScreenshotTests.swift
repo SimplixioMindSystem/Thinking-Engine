@@ -9,7 +9,11 @@
 import XCTest
 
 final class ScreenshotTests: XCTestCase {
+#if os(macOS)
+    let app = XCUIApplication(bundleIdentifier: "me.ph7.cortexos.macos")
+#else
     let app = XCUIApplication()
+#endif
     private lazy var outputDirectory: URL = {
         let override = ProcessInfo.processInfo.environment["SCREENSHOT_OUTPUT_DIR"]
         let root: URL
@@ -44,11 +48,9 @@ final class ScreenshotTests: XCTestCase {
         let screenshot: XCUIScreenshot
 #if os(macOS)
         app.activate()
-        let rootView = app.descendants(matching: .any)
-            .matching(identifier: "mac.root")
-            .firstMatch
-        XCTAssertTrue(rootView.waitForExistence(timeout: 5), "Expected the macOS app root view to exist before capturing \(name).")
-        screenshot = rootView.screenshot()
+        let window = app.windows.firstMatch
+        XCTAssertTrue(window.waitForExistence(timeout: 5), "Expected the macOS app window to exist before capturing \(name).")
+        screenshot = window.screenshot()
 #else
         screenshot = app.screenshot()
 #endif
@@ -75,14 +77,14 @@ final class ScreenshotTests: XCTestCase {
         captureWindow("01_focus")
     }
 
-    func testCaptureDecideTab() throws {
-        // Tap the Decide tab
-        let decideTab = app.tabBars.buttons["Decide"]
-        XCTAssertTrue(decideTab.waitForExistence(timeout: 5))
-        decideTab.tap()
+    func testCaptureReviewHistory() throws {
+        // Review history is the compact decision/replay surface on iPhone.
+        let reviewButton = app.navigationBars.buttons["Review history"]
+        XCTAssertTrue(reviewButton.waitForExistence(timeout: 5))
+        reviewButton.tap()
         sleep(1)
 
-        captureWindow("02_decide")
+        captureWindow("02_review")
     }
 
     func testCaptureCaptureTab() throws {
@@ -140,7 +142,8 @@ final class ScreenshotTests: XCTestCase {
 
     func testCaptureFocusSidebar() throws {
         launchMacApp(sectionID: "focus")
-        // Focus is the default selection
+        let focusHeading = app.staticTexts["Today’s 3 priorities"].firstMatch
+        XCTAssertTrue(focusHeading.waitForExistence(timeout: 5), "Expected the Focus detail content to load.")
         captureWindow("01_focus")
     }
 

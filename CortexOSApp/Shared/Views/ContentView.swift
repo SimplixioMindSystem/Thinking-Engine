@@ -15,6 +15,10 @@ struct ContentView: View {
     @AppStorage("simplixio_onboarding_completed") private var onboardingCompleted = false
     @State private var showOnboarding = false
 
+    private var isRunningUITests: Bool {
+        ProcessInfo.processInfo.arguments.contains("-UITests")
+    }
+
     var body: some View {
         Group {
             #if os(iOS)
@@ -31,15 +35,16 @@ struct ContentView: View {
             .environmentObject(engine)
         }
         .task {
-            if !onboardingCompleted {
+            if isRunningUITests {
+                onboardingCompleted = true
+                await engine.populateDemoContent()
+            } else if !onboardingCompleted {
                 showOnboarding = true
             }
         }
     }
 
-    private var launchArguments: [String] {
-        ProcessInfo.processInfo.arguments
-    }
+    private var launchArguments: [String] { ProcessInfo.processInfo.arguments }
 
     // MARK: - iOS (Focus / Capture)
 
@@ -184,6 +189,13 @@ struct ContentView: View {
         }
         .onAppear {
             selection = launchSelection ?? selection ?? .focus
+            columnVisibility = .all
+        }
+        .task(id: launchSelection) {
+            // Screenshot launches should win over restored window state.
+            guard let launchSelection else { return }
+            await Task.yield()
+            selection = launchSelection
             columnVisibility = .all
         }
         .environmentObject(engine)
