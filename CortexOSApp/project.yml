@@ -26,6 +26,7 @@ settings:
 targets:
   CortexOS-iOS:
     type: application
+    productName: SimpliXio
     platform: iOS
     deploymentTarget: "17.0"
     sources:
@@ -92,6 +93,7 @@ targets:
 
   CortexOS-macOS:
     type: application
+    productName: SimpliXio
     platform: macOS
     deploymentTarget: "14.0"
     sources:
@@ -163,6 +165,7 @@ targets:
 
   CortexOS-watchOS:
     type: application
+    productName: SimpliXio Watch
     platform: watchOS
     deploymentTarget: "10.0"
     sources:

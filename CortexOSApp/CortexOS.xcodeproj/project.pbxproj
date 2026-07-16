@@ -29,7 +29,6 @@
 		4EC4DA2D2F83A50C1CD52574 /* SignalWorkbenchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4959C87776EA0B52D76B22E3 /* SignalWorkbenchView.swift */; };
 		5325B0BC982BBDDBE0118C93 /* KnowledgeNote.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7069ADE1D4517A68074A941 /* KnowledgeNote.swift */; };
 		53AED17EEE30BD3659D1E0AF /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7ED83F6AB0177D62051212CE /* APIService.swift */; };
-		5751C6F3B68B292803DE70DB /* CortexOS-watchOS.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = EE01ED8C081A973906010617 /* CortexOS-watchOS.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		599AC0F2169EBA44103864FF /* DecisionReplayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69BD06BB5DCA5D34B3AA4AF1 /* DecisionReplayView.swift */; };
 		5EA3FEF1B505A295927D2771 /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7ED83F6AB0177D62051212CE /* APIService.swift */; };
 		5EB49BCCA4D82078BA878659 /* MemoryExplorerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B9D01C665875FEE55307014 /* MemoryExplorerView.swift */; };
@@ -85,6 +84,7 @@
 		EC89A449EB70DCC5B298AAA7 /* WidgetData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88787A9DF70A154D80BA2F03 /* WidgetData.swift */; };
 		EE8E189BF25E03C6D8540A9C /* ServerHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B2CD3E21B3B4C11494D5E8A /* ServerHealth.swift */; };
 		EEE62C622A0701A7EC6A4218 /* NewsletterWorkbenchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BB198D1B3123FE870A19957 /* NewsletterWorkbenchView.swift */; };
+		F0AD6F08744D1FE9AFF6D659 /* SimpliXio Watch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = E7C6B5F42F17BEC61C538D8B /* SimpliXio Watch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		F42DC43965C8517A6A563BEC /* CortexWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7528E757C3F3E937B835C026 /* CortexWatchApp.swift */; };
 		F493F39713E5F26E86430BAC /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F40F5AE2A6234C33C5D518E0 /* SettingsView.swift */; };
 		F55CE3FD2BD0007E434AABDB /* SyncSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A4B10FE4642391FE81849AE /* SyncSnapshot.swift */; };
@@ -144,7 +144,7 @@
 			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
 			dstSubfolderSpec = 16;
 			files = (
-				5751C6F3B68B292803DE70DB /* CortexOS-watchOS.app in Embed Watch Content */,
+				F0AD6F08744D1FE9AFF6D659 /* SimpliXio Watch.app in Embed Watch Content */,
 			);
 			name = "Embed Watch Content";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -163,6 +163,7 @@
 		3A4B10FE4642391FE81849AE /* SyncSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncSnapshot.swift; sourceTree = "<group>"; };
 		4959C87776EA0B52D76B22E3 /* SignalWorkbenchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalWorkbenchView.swift; sourceTree = "<group>"; };
 		51C2BB591E25960A5E60944C /* CortexOS-Widget.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = "CortexOS-Widget.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		53D8211C01BE42077D99A901 /* SimpliXio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SimpliXio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5721E1150AE4F7C3C1920DEF /* CaptureQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureQueue.swift; sourceTree = "<group>"; };
 		5C81BB2D559BBB48F8E3C773 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		63BCBB6AA2F201EA97963BB5 /* CortexOS-macOS-UITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "CortexOS-macOS-UITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -172,12 +173,12 @@
 		6B9D01C665875FEE55307014 /* MemoryExplorerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryExplorerView.swift; sourceTree = "<group>"; };
 		7313EFB35830133EE4155F5C /* InsightFeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightFeedView.swift; sourceTree = "<group>"; };
 		7528E757C3F3E937B835C026 /* CortexWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CortexWatchApp.swift; sourceTree = "<group>"; };
-		78CE4FA3A70257B60699E5C9 /* CortexOS-macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "CortexOS-macOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		78FFD258AC33EA641453E77D /* CortexOS-iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "CortexOS-iOS.entitlements"; sourceTree = "<group>"; };
 		7A2BF1090AE67AB15EDFF542 /* OfflineStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineStore.swift; sourceTree = "<group>"; };
 		7ED83F6AB0177D62051212CE /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
 		88787A9DF70A154D80BA2F03 /* WidgetData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetData.swift; sourceTree = "<group>"; };
 		8A68B29F8468FF48C1DAFE09 /* CortexOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CortexOSApp.swift; sourceTree = "<group>"; };
+		8AD6440A43273DF9A9F53A7B /* SimpliXio.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SimpliXio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8F4BACA0E270BC81467132B4 /* SnapshotCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotCache.swift; sourceTree = "<group>"; };
 		90E2603A59A1D4A34C5E0D3D /* WatchDecisionModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchDecisionModel.swift; sourceTree = "<group>"; };
 		92F7EAF5E556E281CE9F848D /* CortexEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CortexEngine.swift; sourceTree = "<group>"; };
@@ -197,13 +198,12 @@
 		E1040BF0BCDC6B775AB8BFEB /* UserProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfile.swift; sourceTree = "<group>"; };
 		E3A44FD6A1185BFD939E4A49 /* ConfidenceIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfidenceIndicator.swift; sourceTree = "<group>"; };
 		E7C07A176E5DAFAE02282C9F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		E7C6B5F42F17BEC61C538D8B /* SimpliXio Watch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "SimpliXio Watch.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED492439B9253F6CF71DC93B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		EDAF6B17B98DBF6A1DDF49E0 /* SummaryIngestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryIngestView.swift; sourceTree = "<group>"; };
-		EE01ED8C081A973906010617 /* CortexOS-watchOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "CortexOS-watchOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F2D9FF7EE8594EA332A3A31A /* CortexOS-watchOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "CortexOS-watchOS.entitlements"; sourceTree = "<group>"; };
 		F40F5AE2A6234C33C5D518E0 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		F5CA9EF84BDCB0E2FA37F75F /* WatchRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchRootView.swift; sourceTree = "<group>"; };
-		FE206CAC9EDAB0031B2A6271 /* CortexOS-iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "CortexOS-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -280,11 +280,11 @@
 			isa = PBXGroup;
 			children = (
 				686A3F0DF07BE408DC36644A /* CortexOS-iOS-UITests.xctest */,
-				FE206CAC9EDAB0031B2A6271 /* CortexOS-iOS.app */,
 				63BCBB6AA2F201EA97963BB5 /* CortexOS-macOS-UITests.xctest */,
-				78CE4FA3A70257B60699E5C9 /* CortexOS-macOS.app */,
-				EE01ED8C081A973906010617 /* CortexOS-watchOS.app */,
 				51C2BB591E25960A5E60944C /* CortexOS-Widget.appex */,
+				E7C6B5F42F17BEC61C538D8B /* SimpliXio Watch.app */,
+				8AD6440A43273DF9A9F53A7B /* SimpliXio.app */,
+				53D8211C01BE42077D99A901 /* SimpliXio.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -397,7 +397,7 @@
 			packageProductDependencies = (
 			);
 			productName = "CortexOS-macOS";
-			productReference = 78CE4FA3A70257B60699E5C9 /* CortexOS-macOS.app */;
+			productReference = 53D8211C01BE42077D99A901 /* SimpliXio.app */;
 			productType = "com.apple.product-type.application";
 		};
 		48566068873B85D9B4B03162 /* CortexOS-macOS-UITests */ = {
@@ -454,7 +454,7 @@
 			packageProductDependencies = (
 			);
 			productName = "CortexOS-iOS";
-			productReference = FE206CAC9EDAB0031B2A6271 /* CortexOS-iOS.app */;
+			productReference = 8AD6440A43273DF9A9F53A7B /* SimpliXio.app */;
 			productType = "com.apple.product-type.application";
 		};
 		EAA72848397871234B08D719 /* CortexOS-watchOS */ = {
@@ -472,7 +472,7 @@
 			packageProductDependencies = (
 			);
 			productName = "CortexOS-watchOS";
-			productReference = EE01ED8C081A973906010617 /* CortexOS-watchOS.app */;
+			productReference = E7C6B5F42F17BEC61C538D8B /* SimpliXio Watch.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
