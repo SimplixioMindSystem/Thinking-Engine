@@ -64,6 +64,13 @@ struct WatchRootView: View {
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
 
+            if !priority.why.isEmpty {
+                Text(priority.why)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
             if !priority.action.isEmpty {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Next action")
@@ -103,10 +110,10 @@ struct WatchRootView: View {
             }
 
             HStack(spacing: 5) {
-                feedbackButton("Snooze", icon: "clock.fill") {
+                feedbackButton("Not done", icon: "circle") {
                     Task { await model.sendQuickFeedback(for: priority, useful: true, acted: false) }
                 }
-                feedbackButton("Skip", icon: "hand.thumbsdown.fill") {
+                feedbackButton("Not useful", icon: "hand.thumbsdown.fill") {
                     Task { await model.sendQuickFeedback(for: priority, useful: false, acted: nil) }
                 }
             }
@@ -126,6 +133,8 @@ struct WatchRootView: View {
         Button(action: action) {
             Label(title, systemImage: icon)
                 .font(.caption2)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
                 .frame(maxWidth: .infinity, minHeight: 30)
         }
         .buttonStyle(.bordered)
@@ -149,9 +158,9 @@ struct WatchRootView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 
             Button {
-                Task { await model.captureByVoice() }
+                Task { await model.saveCapture() }
             } label: {
-                Label("Capture", systemImage: "mic.fill")
+                Label("Save capture", systemImage: "square.and.arrow.down")
                     .frame(maxWidth: .infinity, minHeight: 34)
             }
             .disabled(model.captureText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)

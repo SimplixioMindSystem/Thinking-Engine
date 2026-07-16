@@ -78,7 +78,7 @@ final class WatchDecisionModel: ObservableObject {
         await refreshPending()
     }
 
-    func captureByVoice() async {
+    func saveCapture() async {
         let cleaned = captureText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleaned.isEmpty else { return }
 
@@ -86,10 +86,10 @@ final class WatchDecisionModel: ObservableObject {
         let request = NoteCreateRequest(
             title: title,
             insight: cleaned,
-            implication: "Captured from Apple Watch voice flow.",
+            implication: "Captured from Apple Watch.",
             action: "Review this in Focus and decide next action.",
             sourceURL: "",
-            tags: ["watch", "voice-capture"]
+            tags: ["watch", "capture"]
         )
 
         do {
