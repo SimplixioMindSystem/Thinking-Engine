@@ -3,15 +3,29 @@ import Foundation
 actor OfflineStore {
     static let shared = OfflineStore()
 
+    private struct ServerNoteCacheMetadata: Codable {
+        var sourceIdentifier = ""
+        var noteIDs: Set<String> = []
+        var hasCompleteSnapshot = false
+    }
+
     private let notesURL: URL
+    private let serverNotesMetadataURL: URL
     private let profileURL: URL
     private let decisionsURL: URL
     private let insightsURL: URL
 
     private var notes: [KnowledgeNote] = []
+    private var serverNotesMetadata = ServerNoteCacheMetadata()
     private var profile: UserProfile = .empty
     private var decisions: [SyncDecision] = []
     private var insights: [SyncInsight] = []
+
+    #if !os(watchOS)
+    /// Serializes derived-index mutations so a delayed update can never
+    /// resurrect a vector after a newer delete or server reconciliation.
+    private var semanticMaintenanceTask: Task<Void, Never>?
+    #endif
 
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
@@ -31,6 +45,7 @@ actor OfflineStore {
         )
 
         notesURL = support.appendingPathComponent("offline_notes.json")
+        serverNotesMetadataURL = support.appendingPathComponent("server_notes_cache.json")
         profileURL = support.appendingPathComponent("offline_profile.json")
         decisionsURL = support.appendingPathComponent("offline_decisions.json")
         insightsURL = support.appendingPathComponent("offline_insights.json")
@@ -38,6 +53,11 @@ actor OfflineStore {
         if let data = try? Data(contentsOf: notesURL),
            let value = try? decoder.decode([KnowledgeNote].self, from: data) {
             notes = value
+        }
+
+        if let data = try? Data(contentsOf: serverNotesMetadataURL),
+           let value = try? decoder.decode(ServerNoteCacheMetadata.self, from: data) {
+            serverNotesMetadata = value
         }
 
         if let data = try? Data(contentsOf: profileURL),
@@ -69,6 +89,56 @@ actor OfflineStore {
         notes.first(where: { $0.id == id })
     }
 
+    /// Reconciles a complete server response into the offline cache while
+    /// preserving captures that have not reached the server yet.
+    func cacheServerSnapshot(_ serverNotes: [KnowledgeNote], sourceIdentifier: String) {
+        notes = Self.mergedServerSnapshot(
+            serverNotes: serverNotes,
+            existingNotes: notes,
+            cachedServerIDs: serverNotesMetadata.noteIDs
+        )
+        serverNotesMetadata = ServerNoteCacheMetadata(
+            sourceIdentifier: sourceIdentifier,
+            noteIDs: Set(serverNotes.map(\.id)),
+            hasCompleteSnapshot: true
+        )
+        persistNotes()
+        persistServerNotesMetadata()
+        scheduleSemanticSynchronization()
+    }
+
+    func cacheServerNote(_ note: KnowledgeNote, sourceIdentifier: String) {
+        let sourceChanged = prepareServerCache(for: sourceIdentifier)
+        notes.removeAll { $0.id == note.id }
+        notes.insert(note, at: 0)
+        serverNotesMetadata.noteIDs.insert(note.id)
+        persistNotes()
+        persistServerNotesMetadata()
+        if sourceChanged {
+            scheduleSemanticSynchronization()
+        } else {
+            scheduleSemanticIndex(note)
+        }
+    }
+
+    func removeCachedServerNote(id: String, sourceIdentifier: String) {
+        let sourceChanged = prepareServerCache(for: sourceIdentifier)
+        notes.removeAll { $0.id == id }
+        serverNotesMetadata.noteIDs.remove(id)
+        persistNotes()
+        persistServerNotesMetadata()
+        if sourceChanged {
+            scheduleSemanticSynchronization()
+        } else {
+            scheduleSemanticRemoval(id: id)
+        }
+    }
+
+    func hasCompleteServerSnapshot(sourceIdentifier: String) -> Bool {
+        serverNotesMetadata.sourceIdentifier == sourceIdentifier &&
+            serverNotesMetadata.hasCompleteSnapshot
+    }
+
     func createNote(_ body: NoteCreateRequest) -> KnowledgeNote {
         let now = iso.string(from: Date())
         let note = KnowledgeNote(
@@ -85,6 +155,7 @@ actor OfflineStore {
         )
         notes.insert(note, at: 0)
         persistNotes()
+        scheduleSemanticIndex(note)
         return note
     }
 
@@ -99,29 +170,250 @@ actor OfflineStore {
         notes[idx].archived = body.archived ?? notes[idx].archived
         notes[idx].updatedAt = iso.string(from: Date())
         persistNotes()
-        return notes[idx]
+        let updated = notes[idx]
+        scheduleSemanticIndex(updated)
+        return updated
     }
 
     func deleteNote(id: String) {
         notes.removeAll { $0.id == id }
         persistNotes()
+        scheduleSemanticRemoval(id: id)
     }
 
     func removeMirroredNote(title: String, sourceURL: String) {
-        if let idx = notes.firstIndex(where: { $0.title == title && $0.sourceURL == sourceURL }) {
+        let matchesMirror: (KnowledgeNote) -> Bool = {
+            $0.title == title && $0.sourceURL == sourceURL
+        }
+        // A successful queued upload can temporarily leave both the local
+        // capture and the server-issued record in this cache. Remove the local
+        // mirror first so the newly authoritative server record survives.
+        let idx = notes.firstIndex {
+            matchesMirror($0) && !serverNotesMetadata.noteIDs.contains($0.id)
+        } ?? notes.firstIndex(where: matchesMirror)
+        if let idx {
+            let id = notes[idx].id
             notes.remove(at: idx)
             persistNotes()
+            scheduleSemanticRemoval(id: id)
         }
     }
 
-    func searchNotes(query: String) -> [KnowledgeNote] {
+    func searchNotes(query: String) async -> [KnowledgeNote] {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !q.isEmpty else { return listNotes() }
-        return orderedNotes().filter {
-            ($0.title + " " + $0.insight + " " + $0.implication + " " + $0.action + " " + $0.tags.joined(separator: " "))
-                .lowercased()
-                .contains(q)
+
+        let ordered = listNotes()
+        let lexicalIDs = lexicalRankedIDs(query: q, notes: ordered)
+
+        #if os(watchOS)
+        let lookup = Dictionary(
+            ordered.map { ($0.id, $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        return lexicalIDs.compactMap { lookup[$0] }
+        #else
+        let semanticHits = await SemanticMemoryStore.shared.search(
+            query: query,
+            limit: min(50, ordered.count)
+        )
+        return fuseSearchResults(
+            ordered: ordered,
+            lexicalIDs: lexicalIDs,
+            semanticHits: semanticHits
+        )
+        #endif
+    }
+
+    func prepareSemanticIndex() async {
+        #if !os(watchOS)
+        semanticMaintenanceTask?.cancel()
+        let snapshot = listNotes()
+        let task = enqueueSemanticMaintenance {
+            await SemanticMemoryStore.shared.synchronize(notes: snapshot)
         }
+        await task.value
+        #endif
+    }
+
+    func semanticIndexStatus() async -> SemanticIndexStatus {
+        #if os(watchOS)
+        return SemanticIndexStatus(
+            indexedNotes: 0,
+            totalNotes: listNotes().count,
+            dimension: 0,
+            modelIdentifier: nil,
+            isAvailable: false,
+            isPersistent: false,
+            storageBytes: 0,
+            errorDescription: nil
+        )
+        #else
+        let totalNotes = listNotes().count
+        let statistics = await SemanticMemoryStore.shared.statistics()
+        return SemanticIndexStatus(
+            indexedNotes: statistics.compatibleRecordCount,
+            totalNotes: totalNotes,
+            dimension: statistics.dimension,
+            modelIdentifier: statistics.modelIdentifier,
+            isAvailable: statistics.isAvailable,
+            isPersistent: statistics.isPersistent,
+            storageBytes: statistics.storageBytes,
+            errorDescription: statistics.errorDescription
+        )
+        #endif
+    }
+
+    func rebuildSemanticIndex() async {
+        #if !os(watchOS)
+        semanticMaintenanceTask?.cancel()
+        let snapshot = listNotes()
+        let task = enqueueSemanticMaintenance {
+            await SemanticMemoryStore.shared.rebuild(notes: snapshot)
+        }
+        await task.value
+        #endif
+    }
+
+    private func lexicalRankedIDs(query: String, notes: [KnowledgeNote]) -> [String] {
+        let stopWords: Set<String> = [
+            "a", "an", "and", "are", "as", "at", "be", "by", "for", "from",
+            "how", "in", "is", "it", "of", "on", "or", "that", "the", "this",
+            "to", "was", "what", "when", "where", "which", "with",
+        ]
+        let meaningfulTokens = query
+            .split { !$0.isLetter && !$0.isNumber }
+            .map(String.init)
+            .filter { $0.count > 1 && !stopWords.contains($0) }
+        let tokens = meaningfulTokens.isEmpty ? [query] : meaningfulTokens
+        return notes.enumerated()
+            .compactMap { offset, note -> (id: String, score: Int, offset: Int)? in
+                let text = note.lexicalSearchText.lowercased()
+                let title = note.title.lowercased()
+                let matchedTokens = tokens.reduce(into: 0) { count, token in
+                    if text.contains(token) { count += 1 }
+                }
+                guard text.contains(query) || matchedTokens > 0 else { return nil }
+
+                var score = matchedTokens * 100 / max(tokens.count, 1)
+                if text.contains(query) { score += 1_000 }
+                if title.contains(query) { score += 500 }
+                return (note.id, score, offset)
+            }
+            .sorted {
+                if $0.score == $1.score { return $0.offset < $1.offset }
+                return $0.score > $1.score
+            }
+            .map { $0.id }
+    }
+
+    #if !os(watchOS)
+    private func fuseSearchResults(
+        ordered: [KnowledgeNote],
+        lexicalIDs: [String],
+        semanticHits: [SemanticSearchHit]
+    ) -> [KnowledgeNote] {
+        var scores: [String: Double] = [:]
+        let rankConstant = 60.0
+
+        for (rank, id) in lexicalIDs.enumerated() {
+            scores[id, default: 0] += 1.25 / (rankConstant + Double(rank + 1))
+        }
+
+        if let topScore = semanticHits.first?.score {
+            let scoreFloor = max(0.15, topScore - 0.25)
+            for (rank, hit) in semanticHits.filter({ $0.score >= scoreFloor }).enumerated() {
+                scores[hit.id, default: 0] += 1.0 / (rankConstant + Double(rank + 1))
+            }
+        }
+
+        let lookup = Dictionary(
+            ordered.map { ($0.id, $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        let recencyRank = Dictionary(
+            ordered.enumerated().map { ($0.element.id, $0.offset) },
+            uniquingKeysWith: min
+        )
+        return scores.keys
+            .compactMap { lookup[$0] }
+            .sorted {
+                let lhs = scores[$0.id, default: 0]
+                let rhs = scores[$1.id, default: 0]
+                if lhs == rhs {
+                    return recencyRank[$0.id, default: .max] < recencyRank[$1.id, default: .max]
+                }
+                return lhs > rhs
+            }
+            .prefix(50)
+            .map { $0 }
+    }
+    #endif
+
+    private func scheduleSemanticIndex(_ note: KnowledgeNote) {
+        #if !os(watchOS)
+        _ = enqueueSemanticMaintenance {
+            await SemanticMemoryStore.shared.index(note: note)
+        }
+        #endif
+    }
+
+    private func scheduleSemanticRemoval(id: String) {
+        #if !os(watchOS)
+        _ = enqueueSemanticMaintenance {
+            await SemanticMemoryStore.shared.remove(id: id)
+        }
+        #endif
+    }
+
+    @discardableResult
+    private func prepareServerCache(for sourceIdentifier: String) -> Bool {
+        guard serverNotesMetadata.sourceIdentifier != sourceIdentifier else { return false }
+        let previousServerIDs = serverNotesMetadata.noteIDs
+        notes.removeAll { previousServerIDs.contains($0.id) }
+        serverNotesMetadata = ServerNoteCacheMetadata(sourceIdentifier: sourceIdentifier)
+        return true
+    }
+
+    private func scheduleSemanticSynchronization() {
+        #if !os(watchOS)
+        let snapshot = notes
+        _ = enqueueSemanticMaintenance {
+            await SemanticMemoryStore.shared.synchronize(notes: snapshot)
+        }
+        #endif
+    }
+
+    #if !os(watchOS)
+    @discardableResult
+    private func enqueueSemanticMaintenance(
+        _ operation: @escaping @Sendable () async -> Void
+    ) -> Task<Void, Never> {
+        let predecessor = semanticMaintenanceTask
+        let task = Task(priority: .utility) {
+            await predecessor?.value
+            guard !Task.isCancelled else { return }
+            await operation()
+        }
+        semanticMaintenanceTask = task
+        return task
+    }
+    #endif
+
+    static func mergedServerSnapshot(
+        serverNotes: [KnowledgeNote],
+        existingNotes: [KnowledgeNote],
+        cachedServerIDs: Set<String>
+    ) -> [KnowledgeNote] {
+        var seenServerIDs: Set<String> = []
+        let uniqueServerNotes = serverNotes.filter { seenServerIDs.insert($0.id).inserted }
+        let incomingServerIDs = Set(uniqueServerNotes.map(\.id))
+        let localNotes = existingNotes.filter { note in
+            !cachedServerIDs.contains(note.id) &&
+                !incomingServerIDs.contains(note.id) &&
+                !note.id.hasPrefix("demo-note-")
+        }
+        return uniqueServerNotes + localNotes
     }
 
     func getProfile() -> UserProfile {
@@ -628,6 +920,11 @@ actor OfflineStore {
     private func persistNotes() {
         guard let data = try? encoder.encode(notes) else { return }
         try? data.write(to: notesURL, options: .atomic)
+    }
+
+    private func persistServerNotesMetadata() {
+        guard let data = try? encoder.encode(serverNotesMetadata) else { return }
+        try? data.write(to: serverNotesMetadataURL, options: .atomic)
     }
 
     private func persistProfile() {

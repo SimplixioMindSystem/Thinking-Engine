@@ -22,6 +22,9 @@ struct SettingsView: View {
 
     private let projectURL = URL(string: "https://github.com/SimplixioMindSystem/Thinking-Engine")!
     private let orgURL = URL(string: "https://github.com/SimplixioMindSystem")!
+    private let authorWebsiteURL = URL(string: "https://pierrehenry.dev")!
+    private let authorGitHubURL = URL(string: "https://github.com/pH-7")!
+    private let authorLinkedInURL = URL(string: "https://www.linkedin.com/in/ph7enry/")!
     private var appVersionDisplay: String { Bundle.main.versionWithBuild }
 
     var body: some View {
@@ -37,6 +40,8 @@ struct SettingsView: View {
             serverURL = engine.api.baseURL
             await engine.checkConnection()
             await engine.refreshPendingSyncActions()
+            engine.resumeSemanticIndexing()
+            await engine.refreshSemanticIndexStatus()
             demoModeEnabled = engine.demoModeEnabled
         }
         .sheet(isPresented: $showQueueSheet) { queueSheet }
@@ -49,6 +54,7 @@ struct SettingsView: View {
         Form {
             connectionSection
             trustSection
+            semanticMemorySection
             identitySection
             aboutSection
             demoSection
@@ -64,6 +70,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: CortexSpacing.lg) {
                 settingsCard("Sync") { connectionSectionBody }
                 settingsCard("Privacy & Trust") { trustSectionBody }
+                settingsCard("On-device Memory") { semanticMemorySectionBody }
                 settingsCard("Identity") { identitySectionBody }
                 settingsCard("About") { aboutSectionBody }
                 settingsCard("Preview Content") { demoSectionBody }
@@ -269,13 +276,104 @@ struct SettingsView: View {
             }
         }
 
-        Link(destination: URL(string: "https://pierrehenry.dev")!) {
+        Link(destination: authorWebsiteURL) {
             settingsLinkRow(icon: "globe", title: "Website", value: "pierrehenry.dev")
         }
 
-        Link(destination: orgURL) {
-            settingsLinkRow(icon: "chevron.left.forwardslash.chevron.right", title: "GitHub", value: "SimplixioMindSystem")
+        Link(destination: authorGitHubURL) {
+            settingsLinkRow(icon: "chevron.left.forwardslash.chevron.right", title: "GitHub", value: "pH-7")
         }
+
+        Link(destination: authorLinkedInURL) {
+            settingsLinkRow(icon: "person.crop.square", title: "LinkedIn", value: "ph7enry")
+        }
+    }
+
+    private var semanticMemorySection: some View {
+        Section("On-device Memory") { semanticMemorySectionBody }
+    }
+
+    @ViewBuilder
+    private var semanticMemorySectionBody: some View {
+        HStack(spacing: CortexSpacing.sm) {
+            Image(systemName: semanticStatusIcon)
+                .foregroundStyle(semanticStatusColor)
+
+            VStack(alignment: .leading, spacing: CortexSpacing.xxs) {
+                Text("Semantic search")
+                    .font(CortexFont.bodyMedium)
+                    .foregroundStyle(CortexColor.textPrimary)
+                Text(semanticIndexLabel)
+                    .font(CortexFont.caption)
+                    .foregroundStyle(semanticStatusColor)
+            }
+
+            Spacer()
+            if engine.isRebuildingSemanticIndex || semanticIndexIsPreparing {
+                ProgressView()
+                    .controlSize(.small)
+            }
+        }
+
+        if let status = engine.semanticIndexStatus, status.isAvailable {
+            LabeledContent("Model", value: "Apple Natural Language · \(status.dimension)D")
+                .font(CortexFont.caption)
+
+            if status.storageBytes > 0 {
+                LabeledContent("Local index", value: semanticStorageLabel(status.storageBytes))
+                    .font(CortexFont.caption)
+            }
+        }
+
+        Button {
+            Task { await engine.rebuildSemanticIndex() }
+        } label: {
+            HStack(spacing: CortexSpacing.xs) {
+                Text("Rebuild local index")
+                if engine.isRebuildingSemanticIndex {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+            }
+        }
+        .buttonStyle(CortexSecondaryButtonStyle())
+        .disabled(engine.isRebuildingSemanticIndex || engine.semanticIndexStatus?.isAvailable != true)
+
+        Text("Search embeddings stay on this device. A server is not required, and the rebuildable index is excluded from backups.")
+            .font(CortexFont.caption)
+            .foregroundStyle(CortexColor.textTertiary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var semanticIndexIsPreparing: Bool {
+        guard let status = engine.semanticIndexStatus else { return true }
+        return status.isAvailable && status.indexedNotes < status.totalNotes
+    }
+
+    private var semanticIndexLabel: String {
+        guard let status = engine.semanticIndexStatus else { return "Preparing local index…" }
+        guard status.isAvailable else { return "Sentence embeddings unavailable" }
+        guard status.isPersistent else { return "Using temporary in-memory search" }
+        if status.indexedNotes < status.totalNotes {
+            return "Indexing \(status.indexedNotes) of \(status.totalNotes) notes"
+        }
+        return status.totalNotes == 1 ? "Ready · 1 note" : "Ready · \(status.totalNotes) notes"
+    }
+
+    private var semanticStatusIcon: String {
+        guard let status = engine.semanticIndexStatus else { return "brain.head.profile" }
+        return status.isReady ? "checkmark.circle.fill" : "brain.head.profile"
+    }
+
+    private var semanticStatusColor: Color {
+        guard let status = engine.semanticIndexStatus else { return CortexColor.neutral }
+        if status.isReady { return CortexColor.success }
+        if !status.isAvailable || !status.isPersistent { return CortexColor.error }
+        return CortexColor.accent
+    }
+
+    private func semanticStorageLabel(_ bytes: Int64) -> String {
+        ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
     }
 
     private var trustSection: some View {
@@ -285,7 +383,9 @@ struct SettingsView: View {
     @ViewBuilder
     private var trustSectionBody: some View {
         VStack(alignment: .leading, spacing: CortexSpacing.xs) {
-            trustRow("Private by default.")
+            trustRow("Semantic search embeddings remain on this device.")
+            trustRow("When configured, source content syncs to the server endpoint shown above.")
+            trustRow("Leave the server endpoint empty for a local-only workflow.")
             trustRow("Public content is redacted before export.")
             trustRow("No autopublish for sensitive content.")
             trustRow("Private outreach requires approval.")

@@ -12,6 +12,7 @@ struct HistoryView: View {
     @EnvironmentObject private var engine: CortexEngine
 
     @State private var segment: HistorySegment = .decisions
+    @State private var notesSearchText = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -28,6 +29,10 @@ struct HistoryView: View {
                 decisionsSection
             case .notes:
                 notesSection
+                    .searchable(text: $notesSearchText, prompt: "Search notes…")
+                    .task(id: notesSearchText) {
+                        await runNotesSearch()
+                    }
             }
         }
         .background(CortexColor.bgPrimary)
@@ -37,6 +42,21 @@ struct HistoryView: View {
             if engine.notes.isEmpty {
                 await engine.fetchNotes()
             }
+        }
+    }
+
+    private func runNotesSearch() async {
+        let query = notesSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if query.isEmpty {
+            await engine.fetchNotes()
+            return
+        }
+        do {
+            try await Task.sleep(for: .milliseconds(250))
+            try Task.checkCancellation()
+            await engine.searchNotes(query: query)
+        } catch {
+            // A newer keystroke or segment change cancelled this query.
         }
     }
 

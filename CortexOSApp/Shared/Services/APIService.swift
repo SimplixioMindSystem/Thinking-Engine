@@ -35,13 +35,32 @@ enum APIError: LocalizedError {
 
 // MARK: - Service
 
+protocol NoteStoreProviding: Sendable {
+    func listNotes(includeArchived: Bool) async -> [KnowledgeNote]
+    func getNote(id: String) async -> KnowledgeNote?
+    func createNote(_ body: NoteCreateRequest) async -> KnowledgeNote
+    func updateNote(id: String, with body: NoteUpdateRequest) async -> KnowledgeNote?
+    func deleteNote(id: String) async
+    func cacheServerSnapshot(_ notes: [KnowledgeNote], sourceIdentifier: String) async
+    func cacheServerNote(_ note: KnowledgeNote, sourceIdentifier: String) async
+    func removeCachedServerNote(id: String, sourceIdentifier: String) async
+    func hasCompleteServerSnapshot(sourceIdentifier: String) async -> Bool
+    func prepareSemanticIndex() async
+    func searchNotes(query: String) async -> [KnowledgeNote]
+}
+
+extension OfflineStore: NoteStoreProviding {}
+
 @MainActor
 final class APIService: ObservableObject {
     static let serverURLDefaultsKey = "cortex_api_url"
     static let defaultServerURL = "https://cortex-thinking-engine-production.up.railway.app"
 
     @Published var baseURL: String {
-        didSet { UserDefaults.standard.set(baseURL, forKey: APIService.serverURLDefaultsKey) }
+        didSet {
+            didAttemptServerNoteSnapshot = false
+            UserDefaults.standard.set(baseURL, forKey: APIService.serverURLDefaultsKey)
+        }
     }
 
     var isOffline: Bool {
@@ -53,21 +72,38 @@ final class APIService: ObservableObject {
     private let session: URLSession
     private let decoder: JSONDecoder
     private let encoder: JSONEncoder
+    private let noteStore: any NoteStoreProviding
     private let requestTimeoutSeconds: Double = 10
+    private var didAttemptServerNoteSnapshot = false
 
-    init(baseURL: String? = nil) {
+    private var serverCacheIdentifier: String {
+        baseURL
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+    }
+
+    init(
+        baseURL: String? = nil,
+        session: URLSession? = nil,
+        noteStore: any NoteStoreProviding = OfflineStore.shared
+    ) {
         let saved = UserDefaults.standard.string(forKey: APIService.serverURLDefaultsKey)
         self.baseURL = baseURL ?? saved ?? APIService.defaultServerURL
 
-        let config = URLSessionConfiguration.default
-        // Keep UI responsive in weak/no-network review environments.
-        // We want fast fallback to local/offline data instead of long hangs.
-        config.timeoutIntervalForRequest = 8
-        config.timeoutIntervalForResource = 12
-        self.session = URLSession(configuration: config)
+        if let session {
+            self.session = session
+        } else {
+            let config = URLSessionConfiguration.default
+            // Keep UI responsive in weak/no-network review environments.
+            // We want fast fallback to local/offline data instead of long hangs.
+            config.timeoutIntervalForRequest = 8
+            config.timeoutIntervalForResource = 12
+            self.session = URLSession(configuration: config)
+        }
 
         self.decoder = JSONDecoder()
         self.encoder = JSONEncoder()
+        self.noteStore = noteStore
     }
 
     // MARK: - Generic request
@@ -163,28 +199,49 @@ final class APIService: ObservableObject {
     // MARK: - Knowledge Notes
 
     func createNoteRemote(_ body: NoteCreateRequest) async throws -> KnowledgeNote {
-        try await request("POST", path: "/notes/", body: body)
+        let note: KnowledgeNote = try await request("POST", path: "/notes/", body: body)
+        await noteStore.cacheServerNote(
+            note,
+            sourceIdentifier: serverCacheIdentifier
+        )
+        return note
     }
 
     func listNotes(includeArchived: Bool = false) async throws -> [KnowledgeNote] {
         if isOffline {
-            return await OfflineStore.shared.listNotes(includeArchived: includeArchived)
+            return await noteStore.listNotes(includeArchived: includeArchived)
         }
+        didAttemptServerNoteSnapshot = true
         do {
-            return try await request("GET", path: "/notes/?include_archived=\(includeArchived)")
+            let notes: [KnowledgeNote] = try await request(
+                "GET",
+                path: "/notes/?include_archived=\(includeArchived)"
+            )
+            await noteStore.cacheServerSnapshot(
+                notes,
+                sourceIdentifier: serverCacheIdentifier
+            )
+            // The cache reconciliation also retains captures that are still
+            // queued for upload, so return the authoritative merged view.
+            return await noteStore.listNotes(includeArchived: includeArchived)
         } catch {
-            return await OfflineStore.shared.listNotes(includeArchived: includeArchived)
+            return await noteStore.listNotes(includeArchived: includeArchived)
         }
     }
 
     func getNote(id: String) async throws -> KnowledgeNote {
-        if isOffline, let note = await OfflineStore.shared.getNote(id: id) {
+        if isOffline, let note = await noteStore.getNote(id: id) {
             return note
         }
         do {
-            return try await request("GET", path: "/notes/\(id)")
+            let note: KnowledgeNote = try await request("GET", path: "/notes/\(id)")
+            await noteStore.cacheServerNote(
+                note,
+                sourceIdentifier: serverCacheIdentifier
+            )
+            return note
         } catch {
-            if let note = await OfflineStore.shared.getNote(id: id) {
+            if let note = await noteStore.getNote(id: id) {
                 return note
             }
             throw error
@@ -193,7 +250,7 @@ final class APIService: ObservableObject {
 
     func createNote(_ body: NoteCreateRequest) async throws -> KnowledgeNote {
         if isOffline {
-            let local = await OfflineStore.shared.createNote(body)
+            let local = await noteStore.createNote(body)
             await CaptureQueue.shared.enqueueNote(
                 title: body.title,
                 insight: body.insight,
@@ -207,7 +264,7 @@ final class APIService: ObservableObject {
         do {
             return try await createNoteRemote(body)
         } catch {
-            let local = await OfflineStore.shared.createNote(body)
+            let local = await noteStore.createNote(body)
             await CaptureQueue.shared.enqueueNote(
                 title: body.title,
                 insight: body.insight,
@@ -221,13 +278,18 @@ final class APIService: ObservableObject {
     }
 
     func updateNote(id: String, _ body: NoteUpdateRequest) async throws -> KnowledgeNote {
-        if isOffline, let note = await OfflineStore.shared.updateNote(id: id, with: body) {
+        if isOffline, let note = await noteStore.updateNote(id: id, with: body) {
             return note
         }
         do {
-            return try await request("PATCH", path: "/notes/\(id)", body: body)
+            let note: KnowledgeNote = try await request("PATCH", path: "/notes/\(id)", body: body)
+            await noteStore.cacheServerNote(
+                note,
+                sourceIdentifier: serverCacheIdentifier
+            )
+            return note
         } catch {
-            if let note = await OfflineStore.shared.updateNote(id: id, with: body) {
+            if let note = await noteStore.updateNote(id: id, with: body) {
                 return note
             }
             throw error
@@ -236,26 +298,34 @@ final class APIService: ObservableObject {
 
     func deleteNote(id: String) async throws {
         if isOffline {
-            await OfflineStore.shared.deleteNote(id: id)
+            await noteStore.deleteNote(id: id)
             return
         }
         do {
             try await requestNoContent("DELETE", path: "/notes/\(id)")
+            await noteStore.removeCachedServerNote(
+                id: id,
+                sourceIdentifier: serverCacheIdentifier
+            )
         } catch {
-            await OfflineStore.shared.deleteNote(id: id)
+            await noteStore.deleteNote(id: id)
         }
     }
 
     func searchNotes(query: String) async throws -> [KnowledgeNote] {
-        if isOffline {
-            return await OfflineStore.shared.searchNotes(query: query)
+        if !isOffline {
+            let hasSnapshot = await noteStore.hasCompleteServerSnapshot(
+                sourceIdentifier: serverCacheIdentifier
+            )
+            if !hasSnapshot && !didAttemptServerNoteSnapshot {
+                _ = try await listNotes()
+                await noteStore.prepareSemanticIndex()
+            }
         }
-        let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
-        do {
-            return try await request("GET", path: "/notes/search?q=\(encoded)")
-        } catch {
-            return await OfflineStore.shared.searchNotes(query: query)
-        }
+        // Search is deliberately local-first even while connected. The server
+        // remains the synchronization authority; the embedded index is the
+        // low-latency, private query engine.
+        return await noteStore.searchNotes(query: query)
     }
 
     // MARK: - Profile

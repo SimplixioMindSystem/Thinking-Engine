@@ -87,6 +87,27 @@ final class ScreenshotTests: XCTestCase {
         captureWindow("02_review")
     }
 
+    func testReviewNotesSearch() throws {
+        let reviewButton = app.navigationBars.buttons["Review history"]
+        XCTAssertTrue(reviewButton.waitForExistence(timeout: 5))
+        reviewButton.tap()
+
+        let notesSegment = app.buttons["Notes"]
+        XCTAssertTrue(notesSegment.waitForExistence(timeout: 5))
+        notesSegment.tap()
+
+        let searchField = app.searchFields.firstMatch
+        XCTAssertTrue(searchField.waitForExistence(timeout: 5))
+        searchField.tap()
+        searchField.typeText("offline")
+
+        let matchingNote = app.staticTexts["Offline continuity increases trust"]
+        XCTAssertTrue(
+            matchingNote.waitForExistence(timeout: 5),
+            "Expected hybrid on-device search to return the matching note."
+        )
+    }
+
     func testCaptureCaptureTab() throws {
         // Tap the Capture tab
         let captureTab = app.tabBars.buttons["Capture"]
@@ -118,6 +139,11 @@ final class ScreenshotTests: XCTestCase {
         }
         sleep(1)
 
+        XCTAssertTrue(
+            app.staticTexts["Semantic search"].waitForExistence(timeout: 5),
+            "Expected on-device semantic index status in Settings."
+        )
+
         captureWindow("04_settings")
     }
     #endif
@@ -125,14 +151,17 @@ final class ScreenshotTests: XCTestCase {
     // MARK: - macOS Screenshots
 
     #if os(macOS)
-    private func launchMacApp(sectionID: String? = nil) {
-        if app.state == .runningForeground {
+    private func launchMacApp(sectionID: String? = nil, searchQuery: String? = nil) {
+        if app.state != .notRunning {
             app.terminate()
         }
 
         var arguments = ["-UITests", "-Screenshots"]
         if let sectionID {
             arguments += ["-mac-section", sectionID]
+        }
+        if let searchQuery {
+            arguments += ["-UITestSearchQuery", searchQuery]
         }
 
         app.launchArguments = arguments
@@ -169,7 +198,27 @@ final class ScreenshotTests: XCTestCase {
 
     func testCaptureSettingsSidebar() throws {
         launchMacApp(sectionID: "settings")
+        XCTAssertTrue(
+            app.staticTexts["Semantic search"].waitForExistence(timeout: 5),
+            "Expected on-device semantic index status in macOS Settings."
+        )
         captureWindow("06_settings")
+    }
+
+    func testMacNotesSearchUsesEmbeddedIndex() throws {
+        launchMacApp(sectionID: "notes", searchQuery: "offline")
+
+        let searchField = app.searchFields.firstMatch
+        XCTAssertTrue(searchField.waitForExistence(timeout: 5))
+        XCTAssertEqual(searchField.value as? String, "offline")
+
+        let matchingNote = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Offline continuity increases trust")
+        ).firstMatch
+        XCTAssertTrue(
+            matchingNote.waitForExistence(timeout: 5),
+            "Expected macOS hybrid on-device search to return the matching note."
+        )
     }
 
     func testSettingsSyncButtonKeepsAppResponsive() throws {

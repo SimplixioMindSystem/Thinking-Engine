@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct KnowledgeNote: Codable, Identifiable, Hashable {
+struct KnowledgeNote: Codable, Identifiable, Hashable, Sendable {
     let id: String
     var title: String
     var insight: String

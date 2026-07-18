@@ -19,13 +19,16 @@ let package = Package(
         .target(
             name: "CortexOSKit",
             path: "CortexOSApp/Shared",
-            exclude: ["Assets.xcassets", "CortexOSApp.swift"],
+            exclude: ["Assets.xcassets", "CortexOSApp.swift", "PrivacyInfo.xcprivacy"],
             sources: [
                 "Components",
                 "Design",
                 "Models",
                 "Services",
                 "Views",
+            ],
+            linkerSettings: [
+                .linkedLibrary("sqlite3"),
             ]
         ),
         .testTarget(

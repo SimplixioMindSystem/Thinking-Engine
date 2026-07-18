@@ -38,10 +38,15 @@ final class CortexEngine: ObservableObject {
     @Published var pendingDecisions = 0
     @Published var pendingFeedback = 0
     @Published var queuedActions: [QueuedActionPreview] = []
+    @Published var semanticIndexStatus: SemanticIndexStatus?
+    @Published var isRebuildingSemanticIndex = false
 
     // MARK: - Dependencies
 
     let api: APIService
+    private var noteRequestGeneration: UInt64 = 0
+    private var semanticPreparationTask: Task<Void, Never>?
+    private var semanticPreparationRequested = false
 
     init(api: APIService? = nil) {
         self.api = api ?? APIService.shared
@@ -57,6 +62,7 @@ final class CortexEngine: ObservableObject {
                 self?.snapshot = await OfflineStore.shared.snapshot()
             }
             await self?.refreshPendingSyncActions()
+            self?.resumeSemanticIndexing()
         }
     }
 
@@ -81,19 +87,32 @@ final class CortexEngine: ObservableObject {
     // MARK: - Notes
 
     func fetchNotes() async {
+        let requestGeneration = beginNoteRequest()
         if demoModeEnabled {
-            notes = await OfflineStore.shared.listNotes()
+            let result = await OfflineStore.shared.listNotes()
+            guard isCurrentNoteRequest(requestGeneration), !Task.isCancelled else { return }
+            notes = result
             errorMessage = nil
+            resumeSemanticIndexing()
             return
         }
 
         isLoading = true
-        defer { isLoading = false }
+        defer {
+            if isCurrentNoteRequest(requestGeneration) { isLoading = false }
+        }
         do {
-            notes = try await api.listNotes()
+            let result = try await api.listNotes()
+            try Task.checkCancellation()
+            guard isCurrentNoteRequest(requestGeneration) else { return }
+            notes = result
             errorMessage = nil
+        } catch is CancellationError {
+            return
         } catch {
-            errorMessage = error.localizedDescription
+            if isCurrentNoteRequest(requestGeneration) {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -124,18 +143,77 @@ final class CortexEngine: ObservableObject {
     }
 
     func searchNotes(query: String) async {
-        guard !query.isEmpty else {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
             await fetchNotes()
             return
         }
+
+        let requestGeneration = beginNoteRequest()
         isLoading = true
-        defer { isLoading = false }
-        do {
-            notes = try await api.searchNotes(query: query)
-            errorMessage = nil
-        } catch {
-            errorMessage = error.localizedDescription
+        defer {
+            if isCurrentNoteRequest(requestGeneration) { isLoading = false }
         }
+        do {
+            let result = try await api.searchNotes(query: trimmed)
+            try Task.checkCancellation()
+            guard isCurrentNoteRequest(requestGeneration) else { return }
+            notes = result
+            errorMessage = nil
+        } catch is CancellationError {
+            return
+        } catch {
+            if isCurrentNoteRequest(requestGeneration) {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private func beginNoteRequest() -> UInt64 {
+        noteRequestGeneration &+= 1
+        return noteRequestGeneration
+    }
+
+    private func isCurrentNoteRequest(_ generation: UInt64) -> Bool {
+        generation == noteRequestGeneration
+    }
+
+    // MARK: - On-device semantic index
+
+    func resumeSemanticIndexing() {
+        semanticPreparationRequested = true
+        guard semanticPreparationTask == nil else { return }
+        semanticPreparationTask = Task(priority: .utility) { [weak self] in
+            guard let self else { return }
+            while !Task.isCancelled {
+                self.semanticPreparationRequested = false
+                await OfflineStore.shared.prepareSemanticIndex()
+                guard !Task.isCancelled else { break }
+                let status = await OfflineStore.shared.semanticIndexStatus()
+                guard !Task.isCancelled else { break }
+                if self.semanticPreparationRequested { continue }
+                self.semanticIndexStatus = status
+                self.semanticPreparationTask = nil
+                return
+            }
+            self.semanticPreparationTask = nil
+        }
+    }
+
+    func refreshSemanticIndexStatus() async {
+        semanticIndexStatus = await OfflineStore.shared.semanticIndexStatus()
+    }
+
+    func rebuildSemanticIndex() async {
+        guard !isRebuildingSemanticIndex else { return }
+        semanticPreparationTask?.cancel()
+        semanticPreparationTask = nil
+        semanticPreparationRequested = false
+        isRebuildingSemanticIndex = true
+        defer { isRebuildingSemanticIndex = false }
+
+        await OfflineStore.shared.rebuildSemanticIndex()
+        semanticIndexStatus = await OfflineStore.shared.semanticIndexStatus()
     }
 
     // MARK: - Profile

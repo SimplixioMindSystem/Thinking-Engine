@@ -32,7 +32,9 @@ The visible product stays simple:
 
 ## Trust
 
-- Private by default.
+- Semantic search and embeddings run on-device.
+- Source data stays on-device when the Server URL is empty; when configured,
+  source records and explicit feedback may sync to that endpoint.
 - Public content runs through redaction and quality checks.
 - Private outreach stays `needs_approval` by default.
 - Human judgement stays in control.
@@ -75,6 +77,12 @@ open CortexOSApp/CortexOS.xcodeproj
 ```
 
 Leave server URL empty in Settings to run fully offline.
+
+The iOS and macOS apps include a native ToucanDB runtime for persistent,
+on-device hybrid semantic and lexical search. It uses Apple Natural Language,
+Accelerate, and SQLite without bundling Python or FAISS; a backend is optional
+unless account sync, collaboration, or remote ingestion is required. See the
+[embedded semantic-memory architecture](docs/semantic-memory-architecture.md).
 
 ## API
 

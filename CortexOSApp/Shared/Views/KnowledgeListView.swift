@@ -10,9 +10,23 @@ import SwiftUI
 
 struct KnowledgeListView: View {
     @EnvironmentObject private var engine: CortexEngine
-    @State private var searchText = ""
+    @State private var searchText: String
     @State private var showingCreateSheet = false
     @State private var showingImportSheet = false
+
+    init() {
+        let arguments = ProcessInfo.processInfo.arguments
+        let flag = "-UITestSearchQuery"
+        let query: String
+        if arguments.contains("-UITests"),
+           let flagIndex = arguments.firstIndex(of: flag),
+           arguments.indices.contains(flagIndex + 1) {
+            query = arguments[flagIndex + 1]
+        } else {
+            query = ""
+        }
+        _searchText = State(initialValue: query)
+    }
 
     var body: some View {
         List {
@@ -42,8 +56,19 @@ struct KnowledgeListView: View {
             NoteDetailView(note: note)
         }
         .searchable(text: $searchText, prompt: "Search notes…")
-        .onChange(of: searchText) { _, newValue in
-            Task { await engine.searchNotes(query: newValue) }
+        .task(id: searchText) {
+            let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+            if query.isEmpty {
+                await engine.fetchNotes()
+                return
+            }
+            do {
+                try await Task.sleep(for: .milliseconds(250))
+                try Task.checkCancellation()
+                await engine.searchNotes(query: query)
+            } catch {
+                // A newer keystroke cancelled this query.
+            }
         }
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
@@ -74,11 +99,6 @@ struct KnowledgeListView: View {
             #if os(macOS)
             .frame(minWidth: 500, minHeight: 400)
             #endif
-        }
-        .task {
-            if engine.notes.isEmpty {
-                await engine.fetchNotes()
-            }
         }
         .refreshable {
             await engine.fetchNotes()

@@ -11,6 +11,7 @@
 import SwiftUI
 
 struct ContentView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var engine = CortexEngine()
     @AppStorage("simplixio_onboarding_completed") private var onboardingCompleted = false
     @State private var showOnboarding = false
@@ -40,6 +41,11 @@ struct ContentView: View {
                 await engine.populateDemoContent()
             } else if !onboardingCompleted {
                 showOnboarding = true
+            }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                engine.resumeSemanticIndexing()
             }
         }
     }
