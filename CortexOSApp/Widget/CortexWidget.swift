@@ -54,7 +54,8 @@ struct CortexTimelineProvider: TimelineProvider {
         let entry = CortexEntry(date: .now, data: data)
 
         // Refresh every 30 minutes — widget updates when app syncs anyway
-        let nextRefresh = Calendar.current.date(byAdding: .minute, value: 30, to: .now)!
+        let nextRefresh = Calendar.current.date(byAdding: .minute, value: 30, to: .now)
+            ?? Date().addingTimeInterval(30 * 60)
         let timeline = Timeline(entries: [entry], policy: .after(nextRefresh))
         completion(timeline)
     }
@@ -88,7 +89,7 @@ struct CortexWidgetEntryView: View {
     @Environment(\.widgetFamily) var family
     let entry: CortexEntry
 
-    private let focusURL = URL(string: "simplixio://focus")!
+    private let focusURL = URL(string: "simplixio://focus")
 
     var body: some View {
         Group {
@@ -280,7 +281,7 @@ private struct SmallView: View {
 
 private struct MediumView: View {
     let entry: CortexEntry
-    private let captureURL = URL(string: "simplixio://capture")!
+    private let captureURL = URL(string: "simplixio://capture")
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -307,7 +308,7 @@ private struct MediumView: View {
 
             if items.isEmpty {
                 Spacer()
-                Text("No priorities yet — sync SimpliXio.")
+                Text("Open SimpliXio to choose your focus.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity)
@@ -341,10 +342,12 @@ private struct MediumView: View {
 
                 HStack {
                     Spacer()
-                    Link(destination: captureURL) {
-                        Label("Capture", systemImage: "square.and.pencil")
-                            .font(.caption2)
-                            .foregroundStyle(.blue.opacity(0.8))
+                    if let captureURL {
+                        Link(destination: captureURL) {
+                            Label("Capture", systemImage: "square.and.pencil")
+                                .font(.caption2)
+                                .foregroundStyle(.blue.opacity(0.8))
+                        }
                     }
                 }
             }

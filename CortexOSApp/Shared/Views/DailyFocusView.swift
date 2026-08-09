@@ -12,6 +12,7 @@ import SwiftUI
 struct DailyFocusView: View {
     @EnvironmentObject private var engine: CortexEngine
     var onRequestCapture: (() -> Void)? = nil
+    var onRequestDecisionReplay: (() -> Void)? = nil
 
     /// Priorities the user has swiped away this session (not persisted — resets on next sync)
     @State private var dismissedTitles: Set<String> = []
@@ -27,10 +28,8 @@ struct DailyFocusView: View {
                     EmptyStateView(
                         icon: "target",
                         title: "No priorities yet",
-                        message: onRequestCapture == nil
-                            ? "Your top priorities will appear here after syncing."
-                            : "Capture what is taking mental space. SimpliXio will filter it into what matters now.",
-                        actionTitle: onRequestCapture == nil ? "Sync" : "Capture a thought",
+                        message: "Capture what is taking mental space. SimpliXio will filter it into what matters now.",
+                        actionTitle: onRequestCapture == nil ? "Refresh" : "Capture a thought",
                         action: {
                             if let onRequestCapture {
                                 onRequestCapture()
@@ -47,13 +46,13 @@ struct DailyFocusView: View {
                 }
             }
         }
-        .safeAreaInset(edge: .bottom) { bottomBar }
         .background(CortexColor.bgPrimary)
         .accessibilityIdentifier("focus.screen")
         .navigationTitle("Focus")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
+        #if os(macOS)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 if let shareText = todayShareText {
@@ -77,6 +76,7 @@ struct DailyFocusView: View {
                 }
             }
         }
+        #endif
         .refreshable { await engine.sync() }
         .sheet(item: $selectedPriority) { priority in
             PriorityDetailSheet(
@@ -169,21 +169,6 @@ struct DailyFocusView: View {
 
             focusStatusStrip
 
-            #if os(iOS)
-            if let onRequestCapture {
-                captureEntryCard(onRequestCapture)
-            }
-            #endif
-
-            // Date — subtle
-            Text(brief.date)
-                .font(CortexFont.caption)
-                .foregroundStyle(CortexColor.textTertiary)
-
-            if let top = visible.first, !top.nextStep.isEmpty {
-                nextActionCard(top.nextStep)
-            }
-
             // #1 Priority — hero card
             if let top = visible.first {
                 HeroPriorityCard(priority: top, onFeedback: { useful in
@@ -259,7 +244,7 @@ struct DailyFocusView: View {
     private var focusStatusStrip: some View {
         VStack(alignment: .leading, spacing: CortexSpacing.xs) {
             if let status = engine.lastSyncStatus {
-                Label(status, systemImage: engine.isConnected ? "checkmark.circle" : "wifi.slash")
+                Label(status, systemImage: focusSyncIcon)
                     .font(CortexFont.caption)
                     .foregroundStyle(CortexColor.textTertiary)
                     .lineLimit(2)
@@ -275,81 +260,15 @@ struct DailyFocusView: View {
         }
     }
 
-    @ViewBuilder
-    private func captureEntryCard(_ action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(alignment: .center, spacing: CortexSpacing.md) {
-                Image(systemName: "plus.circle.fill")
-                    .font(.title3)
-                    .foregroundStyle(CortexColor.accent)
-
-                VStack(alignment: .leading, spacing: CortexSpacing.lg) {
-                    VStack(alignment: .leading, spacing: CortexSpacing.xs) {
-                        Text("Capture a thought")
-                            .font(CortexFont.bodyMedium)
-                            .foregroundStyle(CortexColor.textPrimary)
-                            .lineLimit(1)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .layoutPriority(2)
-                        Text("Add what is taking mental space. Sort it later.")
-                            .font(CortexFont.caption)
-                            .foregroundStyle(CortexColor.textSecondary)
-                            .lineLimit(2)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .layoutPriority(1)
-                    }
-                }
-                .layoutPriority(1)
-
-                Spacer(minLength: 0)
-
-                Image(systemName: "chevron.right")
-                    .font(.caption2)
-                    .foregroundStyle(CortexColor.textTertiary)
-            }
-            .padding(CortexSpacing.md)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(CortexColor.bgSurface)
-            .clipShape(RoundedRectangle(cornerRadius: CortexRadius.large, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: CortexRadius.large, style: .continuous)
-                    .stroke(CortexColor.accent.opacity(0.14), lineWidth: 1)
-            )
+    private var focusSyncIcon: String {
+        switch engine.iCloudSyncState {
+        case .synced: "checkmark.icloud"
+        case .disabled: "internaldrive"
+        case .localOnly: "icloud.slash"
+        case .waitingForKey: "key.icloud"
+        case .storageFull: "externaldrive.badge.exclamationmark"
+        case .failed: "exclamationmark.icloud"
         }
-        .buttonStyle(.plain)
-    }
-
-    @ViewBuilder
-    private var bottomBar: some View {
-        VStack(spacing: CortexSpacing.xs) {
-            #if os(iOS)
-            if let onRequestCapture {
-                Button(action: onRequestCapture) {
-                    HStack(spacing: CortexSpacing.sm) {
-                        Image(systemName: "plus.circle.fill")
-                        Text("Capture")
-                            .font(CortexFont.bodyMedium.weight(.semibold))
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(CortexPrimaryButtonStyle(fullWidth: true))
-            }
-            #endif
-
-            if !engine.isConnected {
-                HStack(spacing: CortexSpacing.sm) {
-                    Image(systemName: "arrow.clockwise.circle")
-                        .font(.caption2)
-                    Text("Offline — will sync when connected")
-                        .font(CortexFont.mono)
-                }
-                .foregroundStyle(CortexColor.textTertiary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-        .padding(.horizontal, CortexSpacing.lg)
-        .padding(.vertical, CortexSpacing.sm)
-        .background(.ultraThinMaterial)
     }
 
     private func dismiss(_ priority: SyncPriority) {
@@ -360,6 +279,7 @@ struct DailyFocusView: View {
         Task { await engine.sendFeedback(item: priority.title, useful: false) }
     }
 
+    #if os(macOS)
     private func triggerSync() {
         Task { await engine.sync() }
     }
@@ -369,20 +289,25 @@ struct DailyFocusView: View {
         let trimmed = shareText.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
     }
+    #endif
 
     private var lastUpdatedLabel: String? {
         guard let raw = engine.snapshot?.syncedAt,
               let date = ISO8601DateFormatter().date(from: raw) else { return nil }
 
+        if abs(date.timeIntervalSinceNow) < 60 {
+            return "Updated just now"
+        }
+
         let rel = RelativeDateTimeFormatter()
         rel.unitsStyle = .abbreviated
-        return "Last updated \(rel.localizedString(for: date, relativeTo: Date()))"
+        return "Updated \(rel.localizedString(for: date, relativeTo: Date()))"
     }
 
     @ViewBuilder
     private func decisionReplaySummaryCard(_ replay: SyncDecisionReplay) -> some View {
         Button {
-            showDecisionReplay = true
+            openDecisionReplay()
         } label: {
             HStack(alignment: .top, spacing: CortexSpacing.md) {
                 VStack(alignment: .leading, spacing: CortexSpacing.xxs) {
@@ -405,19 +330,12 @@ struct DailyFocusView: View {
         .accessibilityLabel("Decision Replay")
     }
 
-    @ViewBuilder
-    private func nextActionCard(_ action: String) -> some View {
-        VStack(alignment: .leading, spacing: CortexSpacing.xs) {
-            Text("One next action")
-                .font(CortexFont.captionMedium)
-                .foregroundStyle(CortexColor.textTertiary)
-            Text(action)
-                .font(CortexFont.bodyMedium)
-                .foregroundStyle(CortexColor.textPrimary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .cortexSurfaceCard(padding: CortexSpacing.md)
+    private func openDecisionReplay() {
+        #if os(iOS)
+        showDecisionReplay = true
+        #else
+        onRequestDecisionReplay?()
+        #endif
     }
 
     @ViewBuilder
@@ -428,7 +346,7 @@ struct DailyFocusView: View {
                     .font(CortexFont.captionMedium)
                     .foregroundStyle(CortexColor.textPrimary)
                 Spacer()
-                Text(newsletter.safeToPublish ? "Safe" : "Needs review")
+                Text(newsletter.safeToPublish ? "Checks passed" : "Needs review")
                     .font(CortexFont.caption)
                     .foregroundStyle(newsletter.safeToPublish ? CortexColor.success : CortexColor.warning)
             }
@@ -444,9 +362,11 @@ struct DailyFocusView: View {
                     .lineLimit(3)
             }
 
-            if let share = newsletterShareText(newsletter) {
+            if !engine.demoModeEnabled,
+               newsletter.isApprovedForSharing,
+               let share = newsletterShareText(newsletter) {
                 ShareLink(item: share) {
-                    Label("Copy Weekly Draft", systemImage: "square.and.arrow.up")
+                    Label("Share approved draft", systemImage: "square.and.arrow.up")
                         .font(CortexFont.caption)
                         .foregroundStyle(CortexColor.accent)
                 }
@@ -523,7 +443,7 @@ private struct HeroPriorityCard: View {
             // Rank indicator — calm, not branded
             Text("#1")
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .foregroundStyle(CortexColor.accent)
+                .foregroundStyle(CortexColor.accentText)
 
             // Priority title — large, clear
             Text(priority.title)
@@ -543,13 +463,20 @@ private struct HeroPriorityCard: View {
 
             // Next step
             if !priority.nextStep.isEmpty {
-                HStack(spacing: CortexSpacing.sm) {
-                    Image(systemName: "arrow.right.circle.fill")
-                        .font(.system(size: 14))
-                        .foregroundStyle(CortexColor.accent)
-                    Text(priority.nextStep)
-                        .font(CortexFont.bodyMedium)
-                        .foregroundStyle(CortexColor.accent)
+                VStack(alignment: .leading, spacing: CortexSpacing.xs) {
+                    Text("Next action")
+                        .font(CortexFont.captionMedium)
+                        .foregroundStyle(CortexColor.textTertiary)
+                    HStack(alignment: .top, spacing: CortexSpacing.sm) {
+                        Image(systemName: "arrow.right.circle.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(CortexColor.accentText)
+                            .padding(.top, 2)
+                        Text(priority.nextStep)
+                            .font(CortexFont.bodyMedium)
+                            .foregroundStyle(CortexColor.accentText)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 .padding(.top, CortexSpacing.xxs)
             }
@@ -567,6 +494,7 @@ private struct HeroPriorityCard: View {
                 )
         )
         .cortexShadow()
+        .contentShape(Rectangle())
         .onTapGesture(perform: onOpen)
         #if os(iOS)
         .contextMenu {
@@ -616,13 +544,13 @@ private struct FocusPriorityCard: View {
                     if !priority.nextStep.isEmpty {
                         Label {
                             Text(priority.nextStep)
-                                .lineLimit(1)
+                                .lineLimit(2)
                                 .fixedSize(horizontal: false, vertical: true)
                         } icon: {
                             Image(systemName: "arrow.right.circle.fill")
                         }
                         .font(CortexFont.caption)
-                        .foregroundStyle(CortexColor.accent)
+                        .foregroundStyle(CortexColor.accentText)
                     }
                 }
 
@@ -657,7 +585,7 @@ private struct FeedbackRow: View {
                 HStack(spacing: CortexSpacing.md) {
                     Spacer()
                     feedbackButton(title: "Useful", icon: "hand.thumbsup", value: true)
-                    feedbackButton(title: "Skip", icon: "hand.thumbsdown", value: false)
+                    feedbackButton(title: "Not useful", icon: "hand.thumbsdown", value: false)
                 }
             } else {
                 HStack {

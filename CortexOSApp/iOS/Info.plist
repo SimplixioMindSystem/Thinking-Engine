@@ -31,6 +31,8 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>SimpliXioKeychainAccessGroup</key>
+	<string>$(AppIdentifierPrefix)me.ph7.cortexos.shared</string>
 	<key>UIApplicationShortcutItems</key>
 	<array>
 		<dict>

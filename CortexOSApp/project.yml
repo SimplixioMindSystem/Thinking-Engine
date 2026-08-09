@@ -19,9 +19,14 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.9"
-    MARKETING_VERSION: "1.1.12"
-    CURRENT_PROJECT_VERSION: "20260716092238"
+    MARKETING_VERSION: "1.9.2"
+    CURRENT_PROJECT_VERSION: "20260809002904"
     CODE_SIGN_STYLE: Automatic
+    # Fastlane injects private release profile names through xcargs.
+    SIMPLIXIO_IOS_PROFILE: ""
+    SIMPLIXIO_WIDGET_PROFILE: ""
+    SIMPLIXIO_WATCH_PROFILE: ""
+    SIMPLIXIO_MAC_PROFILE: ""
 
 targets:
   CortexOS-iOS:
@@ -33,6 +38,9 @@ targets:
       - path: Shared
         excludes:
           - "**/.DS_Store"
+          - "Assets.xcassets"
+          - "Services/APIService.swift"
+          - "Services/CaptureQueue.swift"
       - path: iOS
         excludes:
           - "**/.DS_Store"
@@ -45,6 +53,7 @@ targets:
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         ITSAppUsesNonExemptEncryption: false
+        SimpliXioKeychainAccessGroup: "$(AppIdentifierPrefix)me.ph7.cortexos.shared"
         CFBundleURLTypes:
           - CFBundleURLName: SimpliXio
             CFBundleURLSchemes:
@@ -75,11 +84,14 @@ targets:
       properties:
         com.apple.security.application-groups:
           - group.me.ph7.cortexos
+        com.apple.developer.ubiquity-kvstore-identifier: "$(TeamIdentifierPrefix)me.ph7.cortexos.ios"
+        keychain-access-groups:
+          - "$(AppIdentifierPrefix)me.ph7.cortexos.shared"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: me.ph7.cortexos.ios
         PRODUCT_NAME: SimpliXio
-        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_APPICON_NAME: iOSAppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         GENERATE_INFOPLIST_FILE: NO
         TARGETED_DEVICE_FAMILY: "1,2"
@@ -88,6 +100,9 @@ targets:
         Debug:
           DEBUG_INFORMATION_FORMAT: dwarf
         Release:
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: Apple Distribution
+          PROVISIONING_PROFILE_SPECIFIER: "$(SIMPLIXIO_IOS_PROFILE)"
           DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
           SWIFT_COMPILATION_MODE: wholemodule
 
@@ -100,6 +115,9 @@ targets:
       - path: Shared
         excludes:
           - "**/.DS_Store"
+          - "Assets.xcassets"
+          - "Services/APIService.swift"
+          - "Services/CaptureQueue.swift"
       - path: macOS
         excludes:
           - "**/.DS_Store"
@@ -109,17 +127,20 @@ targets:
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         ITSAppUsesNonExemptEncryption: false
+        SimpliXioKeychainAccessGroup: "$(AppIdentifierPrefix)me.ph7.cortexos.shared"
         LSApplicationCategoryType: public.app-category.productivity
     entitlements:
       path: macOS/CortexOS.entitlements
       properties:
         com.apple.security.app-sandbox: true
-        com.apple.security.network.client: true
+        com.apple.developer.ubiquity-kvstore-identifier: "$(TeamIdentifierPrefix)me.ph7.cortexos.ios"
+        keychain-access-groups:
+          - "$(AppIdentifierPrefix)me.ph7.cortexos.shared"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: me.ph7.cortexos.macos
         PRODUCT_NAME: SimpliXio
-        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_APPICON_NAME: MacAppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         GENERATE_INFOPLIST_FILE: NO
         CODE_SIGN_ENTITLEMENTS: macOS/CortexOS.entitlements
@@ -128,6 +149,9 @@ targets:
         Debug:
           DEBUG_INFORMATION_FORMAT: dwarf
         Release:
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: Apple Distribution
+          PROVISIONING_PROFILE_SPECIFIER: "$(SIMPLIXIO_MAC_PROFILE)"
           DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
           SWIFT_COMPILATION_MODE: wholemodule
 
@@ -149,6 +173,11 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
         SWIFT_EMIT_LOC_STRINGS: YES
         SKIP_INSTALL: YES
+      configs:
+        Release:
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: Apple Distribution
+          PROVISIONING_PROFILE_SPECIFIER: "$(SIMPLIXIO_WIDGET_PROFILE)"
     entitlements:
       path: Widget/CortexOS-Widget.entitlements
       properties:
@@ -159,10 +188,10 @@ targets:
       properties:
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        ITSAppUsesNonExemptEncryption: false
         CFBundleDisplayName: SimpliXio Focus
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
-
   CortexOS-watchOS:
     type: application
     productName: SimpliXio Watch
@@ -176,11 +205,12 @@ targets:
       - path: Shared/Services
         excludes:
           - "**/.DS_Store"
+          - "APIService.swift"
+          - "CaptureQueue.swift"
           - "CortexEngine.swift"
       - path: Shared/Design
         excludes:
           - "**/.DS_Store"
-      - path: Shared/Assets.xcassets
       - path: watchOS
         excludes:
           - "**/.DS_Store"
@@ -190,14 +220,21 @@ targets:
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         ITSAppUsesNonExemptEncryption: false
-        CFBundleIconName: AppIcon
+        SimpliXioKeychainAccessGroup: "$(AppIdentifierPrefix)me.ph7.cortexos.shared"
+        CFBundleIconName: WatchAppIcon
         WKApplication: true
         WKCompanionAppBundleIdentifier: me.ph7.cortexos.ios
+    entitlements:
+      path: watchOS/CortexOS-watchOS.entitlements
+      properties:
+        com.apple.developer.ubiquity-kvstore-identifier: "$(TeamIdentifierPrefix)me.ph7.cortexos.ios"
+        keychain-access-groups:
+          - "$(AppIdentifierPrefix)me.ph7.cortexos.shared"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: me.ph7.cortexos.ios.watchos
         PRODUCT_NAME: SimpliXio Watch
-        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_APPICON_NAME: WatchAppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         GENERATE_INFOPLIST_FILE: NO
         SKIP_INSTALL: YES
@@ -206,6 +243,9 @@ targets:
         Debug:
           DEBUG_INFORMATION_FORMAT: dwarf
         Release:
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: Apple Distribution
+          PROVISIONING_PROFILE_SPECIFIER: "$(SIMPLIXIO_WATCH_PROFILE)"
           DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
           SWIFT_COMPILATION_MODE: wholemodule
 
@@ -246,9 +286,9 @@ schemes:
     build:
       targets:
         CortexOS-iOS: all
-        CortexOS-Widget: all
     run:
       config: Debug
+      executable: CortexOS-iOS
     test:
       config: Debug
       targets:

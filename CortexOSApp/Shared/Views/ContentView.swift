@@ -4,7 +4,8 @@
 //
 //  Root navigation — calm, focused, minimal.
 //  iOS: Focus / Capture. Open → Understand → Capture → Close.
-//  macOS: Focus / Notes / Insights / Decisions / Memory / Weekly Review.
+//  macOS: Focus / Capture / Notes / Review. Advanced tools stay available but
+//  do not compete with the daily decision flow.
 //  Quiet workbench.
 //
 
@@ -18,6 +19,10 @@ struct ContentView: View {
 
     private var isRunningUITests: Bool {
         ProcessInfo.processInfo.arguments.contains("-UITests")
+    }
+
+    private var usesUITestPreview: Bool {
+        isRunningUITests && !ProcessInfo.processInfo.arguments.contains("-UITestsNoDemo")
     }
 
     var body: some View {
@@ -38,7 +43,11 @@ struct ContentView: View {
         .task {
             if isRunningUITests {
                 onboardingCompleted = true
-                await engine.populateDemoContent()
+                if usesUITestPreview {
+                    await engine.populateDemoContent()
+                } else {
+                    await engine.setDemoMode(enabled: false)
+                }
             } else if !onboardingCompleted {
                 showOnboarding = true
             }
@@ -46,7 +55,11 @@ struct ContentView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 engine.resumeSemanticIndexing()
+                Task { await engine.sync() }
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: ICloudSyncService.externalChangeNotification)) { _ in
+            Task { await engine.sync() }
         }
     }
 
@@ -75,14 +88,6 @@ struct ContentView: View {
                             .accessibilityLabel("Review history")
                         }
                         ToolbarItemGroup(placement: .topBarTrailing) {
-                            Button {
-                                selectedTab = .capture
-                            } label: {
-                                Image(systemName: "square.and.pencil")
-                                    .foregroundStyle(CortexColor.accent)
-                            }
-                            .accessibilityLabel("Capture")
-
                             Button {
                                 showSettings = true
                             } label: {
@@ -147,11 +152,12 @@ struct ContentView: View {
     }
     #endif
 
-    // MARK: - macOS (Focus / Notes / Insights / Decisions / Memory / Weekly Review)
+    // MARK: - macOS workbench
 
     #if os(macOS)
     @State private var selection: MacSection? = .focus
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    @State private var showsAdvancedReview = false
 
     private var macOSRoot: some View {
         ZStack {
@@ -159,17 +165,23 @@ struct ContentView: View {
                 List(selection: $selection) {
                     sidebarGroup("Now", items: MacSection.coreSidebar)
                     sidebarGroup("Review", items: MacSection.reviewSidebar)
+                    advancedReviewGroup
                     sidebarGroup("Create", items: MacSection.publishSidebar)
                     sidebarGroup("Control", items: MacSection.systemSidebar)
                 }
-                .navigationTitle("SimpliXio")
                 .listStyle(.sidebar)
-                .contentMargins(.top, CortexSpacing.sm, for: .scrollContent)
+                // The window already carries the product name. Omitting a sidebar
+                // title prevents macOS from reserving a second empty title band.
+                .contentMargins(.top, 0, for: .scrollContent)
                 .foregroundStyle(CortexColor.textPrimary)
                 .navigationSplitViewColumnWidth(min: 220, ideal: 240, max: 300)
             } detail: {
                 switch selection {
-                case .focus:       DailyFocusView()
+                case .focus:
+                    DailyFocusView(
+                        onRequestCapture: { selection = .capture },
+                        onRequestDecisionReplay: { selection = .decisionReplay }
+                    )
                 case .capture:     QuickCaptureView()
                 case .notes:       KnowledgeListView()
                 case .insights:    InsightFeedView()
@@ -183,19 +195,25 @@ struct ContentView: View {
                 case .contentCandidates: SignalWorkbenchView(focus: .contentCandidates)
                 case .newsletter: NewsletterWorkbenchView()
                 case .settings:    SettingsView()
-                case nil:          DailyFocusView()
+                case nil:
+                    DailyFocusView(
+                        onRequestCapture: { selection = .capture },
+                        onRequestDecisionReplay: { selection = .decisionReplay }
+                    )
                 }
             }
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("mac.root")
-        .onChange(of: selection) { _, _ in
+        .onChange(of: selection) { _, newSelection in
             // Keep the workbench navigation stable when switching sections.
             columnVisibility = .all
+            revealAdvancedSelectionIfNeeded(newSelection)
         }
         .onAppear {
             selection = launchSelection ?? selection ?? .focus
             columnVisibility = .all
+            revealAdvancedSelectionIfNeeded(selection)
         }
         .task(id: launchSelection) {
             // Screenshot launches should win over restored window state.
@@ -203,6 +221,7 @@ struct ContentView: View {
             await Task.yield()
             selection = launchSelection
             columnVisibility = .all
+            revealAdvancedSelectionIfNeeded(launchSelection)
         }
         .environmentObject(engine)
         .frame(minWidth: 800, minHeight: 500)
@@ -228,12 +247,39 @@ struct ContentView: View {
         }
     }
 
+    @ViewBuilder
+    private var advancedReviewGroup: some View {
+        Section {
+            DisclosureGroup(isExpanded: $showsAdvancedReview) {
+                ForEach(MacSection.advancedReviewSidebar, id: \.self) { section in
+                    Label(section.title, systemImage: section.systemImage)
+                        .font(.body)
+                        .tag(section)
+                        .accessibilityLabel(section.title)
+                        .accessibilityIdentifier("sidebar.\(section.accessibilityID)")
+                }
+            } label: {
+                Text("More")
+                    .font(CortexFont.captionMedium)
+                    .foregroundStyle(CortexColor.textSecondary)
+            }
+        }
+    }
+
     private var launchSelection: MacSection? {
         guard let index = launchArguments.firstIndex(of: "-mac-section"),
               launchArguments.indices.contains(index + 1) else {
             return nil
         }
         return MacSection(launchArgument: launchArguments[index + 1])
+    }
+
+    private func revealAdvancedSelectionIfNeeded(_ section: MacSection?) {
+        guard let section,
+              MacSection.advancedReviewSidebar.contains(section) else {
+            return
+        }
+        showsAdvancedReview = true
     }
 
     enum MacSection: Hashable, CaseIterable {
@@ -243,15 +289,18 @@ struct ContentView: View {
             .focus,
             .capture,
             .notes,
-            .insights,
-            .decisions,
-            .memory,
         ]
 
         static let reviewSidebar: [MacSection] = [
             .weeklyReview,
             .decisionReplay,
             .signalQueues,
+        ]
+
+        static let advancedReviewSidebar: [MacSection] = [
+            .insights,
+            .decisions,
+            .memory,
             .recurringPatterns,
             .unresolvedTensions,
             .contentCandidates,
@@ -275,7 +324,7 @@ struct ContentView: View {
             case .memory: "Memory"
             case .weeklyReview: "Weekly Review"
             case .decisionReplay: "Decision Replay"
-            case .signalQueues: "Review Queue"
+            case .signalQueues: "Queues"
             case .recurringPatterns: "Recurring Patterns"
             case .unresolvedTensions: "Unresolved Tensions"
             case .contentCandidates: "Content Candidates"
@@ -397,7 +446,7 @@ private struct SimpliXioOnboardingView: View {
                         )
                     }
 
-                    Text("You can stay fully offline, or connect a server later in Settings.")
+                    Text("Everything works on-device. Private iCloud sync keeps your Apple devices aligned.")
                         .font(CortexFont.caption)
                         .foregroundStyle(CortexColor.textTertiary)
                     Text("Private by default. Public output is redacted, and you stay in control.")

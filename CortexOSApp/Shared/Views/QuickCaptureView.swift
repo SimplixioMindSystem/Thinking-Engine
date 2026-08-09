@@ -29,25 +29,33 @@ struct QuickCaptureView: View {
     }
 
     private var capturedStatusText: String {
-        if engine.api.isOffline { return "Captured locally" }
-        return engine.isConnected ? "Captured" : "Captured offline"
+        "Captured privately"
     }
 
     private var capturedStatusIcon: String {
-        if engine.api.isOffline { return "checkmark.circle.fill" }
-        return engine.isConnected ? "checkmark.circle.fill" : "arrow.clockwise.circle"
+        "checkmark.circle.fill"
     }
 
     private var captureSyncText: String {
-        if engine.api.isOffline {
-            return "Stored on this device. Add a server later to sync."
+        switch engine.iCloudSyncState {
+        case .synced:
+            return "Saved on this device and synced privately with iCloud."
+        case .disabled:
+            return "Saved only on this device."
+        case .localOnly, .waitingForKey, .failed:
+            return "Saved on this device. iCloud will retry automatically."
+        case .storageFull:
+            return "Saved on this device. Free iCloud sync storage to resume syncing."
         }
-        return engine.isConnected ? "Capture syncs automatically." : "Offline capture is queued safely."
     }
 
     private var captureSyncIcon: String {
-        if engine.api.isOffline { return "internaldrive" }
-        return engine.isConnected ? "arrow.triangle.2.circlepath" : "tray.and.arrow.up"
+        switch engine.iCloudSyncState {
+        case .synced: "checkmark.icloud"
+        case .disabled: "internaldrive"
+        case .localOnly, .waitingForKey, .failed: "icloud.slash"
+        case .storageFull: "externaldrive.badge.exclamationmark"
+        }
     }
 
     private func captureTitle(from value: String) -> String {
@@ -141,27 +149,21 @@ struct QuickCaptureView: View {
         }
         .background(CortexColor.bgPrimary)
         .navigationTitle("Capture")
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+        #endif
         .scrollDismissesKeyboard(.interactively)
         .safeAreaInset(edge: .bottom) {
             HStack(spacing: CortexSpacing.md) {
-                if focusedField != nil {
-                    Button {
-                        focusedField = nil
-                    } label: {
-                        Label("Done", systemImage: "keyboard.chevron.compact.down")
-                            .font(CortexFont.captionMedium)
-                    }
-                    .buttonStyle(CortexSecondaryButtonStyle())
-                } else if canSave {
-                    Button {
-                        text = ""
-                        reason = ""
-                    } label: {
-                        Label("Clear", systemImage: "xmark.circle")
-                            .font(CortexFont.captionMedium)
-                    }
-                    .buttonStyle(CortexSecondaryButtonStyle())
+                Button {
+                    text = ""
+                    reason = ""
+                } label: {
+                    Label("Clear", systemImage: "xmark.circle")
+                        .font(CortexFont.captionMedium)
                 }
+                .buttonStyle(CortexSecondaryButtonStyle())
+                .disabled(!canSave)
 
                 Button {
                     Task { await save() }
@@ -191,9 +193,6 @@ struct QuickCaptureView: View {
         }
         .animation(.easeInOut(duration: 0.2), value: mode)
         .animation(.easeInOut(duration: 0.2), value: saved)
-        .onTapGesture {
-            focusedField = nil
-        }
     }
 
     private func save() async {

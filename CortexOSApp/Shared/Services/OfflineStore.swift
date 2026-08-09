@@ -9,17 +9,30 @@ actor OfflineStore {
         var hasCompleteSnapshot = false
     }
 
+    private struct PrivateSyncMetadata: Codable {
+        var deletedNoteIDs: [String: String] = [:]
+        var profileUpdatedAt = ""
+        var decisionUpdatedAt: [String: String] = [:]
+    }
+
     private let notesURL: URL
     private let serverNotesMetadataURL: URL
     private let profileURL: URL
     private let decisionsURL: URL
     private let insightsURL: URL
+    private let feedbackURL: URL
+    private let privateSyncMetadataURL: URL
+    private let newsletterURL: URL
+    private let newsletterMarkdownURL: URL
 
     private var notes: [KnowledgeNote] = []
     private var serverNotesMetadata = ServerNoteCacheMetadata()
     private var profile: UserProfile = .empty
     private var decisions: [SyncDecision] = []
     private var insights: [SyncInsight] = []
+    private var feedback: [LocalFeedbackEvent] = []
+    private var privateSyncMetadata = PrivateSyncMetadata()
+    private var latestNewsletter: SyncNewsletter?
 
     #if !os(watchOS)
     /// Serializes derived-index mutations so a delayed update can never
@@ -32,6 +45,7 @@ actor OfflineStore {
     private let iso = ISO8601DateFormatter()
 
     private let demoModeKey = "cortex_demo_mode_enabled"
+    private let demoModeMigrationKey = "simplixio_preview_mode_opt_in_v1"
 
     private init() {
         let support = FileManager.default.urls(
@@ -49,6 +63,10 @@ actor OfflineStore {
         profileURL = support.appendingPathComponent("offline_profile.json")
         decisionsURL = support.appendingPathComponent("offline_decisions.json")
         insightsURL = support.appendingPathComponent("offline_insights.json")
+        feedbackURL = support.appendingPathComponent("offline_feedback.json")
+        privateSyncMetadataURL = support.appendingPathComponent("private_sync_metadata.json")
+        newsletterURL = support.appendingPathComponent("offline_newsletter.json")
+        newsletterMarkdownURL = support.appendingPathComponent("SimpliXio-Newsletter.md")
 
         if let data = try? Data(contentsOf: notesURL),
            let value = try? decoder.decode([KnowledgeNote].self, from: data) {
@@ -73,6 +91,21 @@ actor OfflineStore {
         if let data = try? Data(contentsOf: insightsURL),
            let value = try? decoder.decode([SyncInsight].self, from: data) {
             insights = value
+        }
+
+        if let data = try? Data(contentsOf: feedbackURL),
+           let value = try? decoder.decode([LocalFeedbackEvent].self, from: data) {
+            feedback = value
+        }
+
+        if let data = try? Data(contentsOf: privateSyncMetadataURL),
+           let value = try? decoder.decode(PrivateSyncMetadata.self, from: data) {
+            privateSyncMetadata = value
+        }
+
+        if let data = try? Data(contentsOf: newsletterURL),
+           let value = try? decoder.decode(SyncNewsletter.self, from: data) {
+            latestNewsletter = value
         }
     }
 
@@ -111,8 +144,10 @@ actor OfflineStore {
         let sourceChanged = prepareServerCache(for: sourceIdentifier)
         notes.removeAll { $0.id == note.id }
         notes.insert(note, at: 0)
+        privateSyncMetadata.deletedNoteIDs.removeValue(forKey: note.id)
         serverNotesMetadata.noteIDs.insert(note.id)
         persistNotes()
+        persistPrivateSyncMetadata()
         persistServerNotesMetadata()
         if sourceChanged {
             scheduleSemanticSynchronization()
@@ -153,8 +188,10 @@ actor OfflineStore {
             updatedAt: now,
             archived: false
         )
+        privateSyncMetadata.deletedNoteIDs.removeValue(forKey: note.id)
         notes.insert(note, at: 0)
         persistNotes()
+        persistPrivateSyncMetadata()
         scheduleSemanticIndex(note)
         return note
     }
@@ -169,7 +206,9 @@ actor OfflineStore {
         notes[idx].tags = body.tags ?? notes[idx].tags
         notes[idx].archived = body.archived ?? notes[idx].archived
         notes[idx].updatedAt = iso.string(from: Date())
+        privateSyncMetadata.deletedNoteIDs.removeValue(forKey: id)
         persistNotes()
+        persistPrivateSyncMetadata()
         let updated = notes[idx]
         scheduleSemanticIndex(updated)
         return updated
@@ -177,7 +216,9 @@ actor OfflineStore {
 
     func deleteNote(id: String) {
         notes.removeAll { $0.id == id }
+        privateSyncMetadata.deletedNoteIDs[id] = iso.string(from: Date())
         persistNotes()
+        persistPrivateSyncMetadata()
         scheduleSemanticRemoval(id: id)
     }
 
@@ -197,6 +238,40 @@ actor OfflineStore {
             persistNotes()
             scheduleSemanticRemoval(id: id)
         }
+    }
+
+    /// Resolves a locally created note after its queued create reaches the
+    /// server. If it changed while uploading, preserve the local version under
+    /// the server-issued ID so a following queued update stays visible.
+    func reconcileQueuedNoteUpload(
+        localNoteID: String?,
+        serverNote: KnowledgeNote,
+        preserveLocalEdits: Bool
+    ) {
+        guard let localNoteID,
+              let localIndex = notes.firstIndex(where: { $0.id == localNoteID }) else {
+            return
+        }
+
+        let localNote = notes.remove(at: localIndex)
+        // The note now has a server-issued ID. Remove the old local record so
+        // semantic search cannot retain an orphaned vector after reconciliation.
+        scheduleSemanticRemoval(id: localNoteID)
+        if preserveLocalEdits {
+            var reconciled = serverNote
+            reconciled.title = localNote.title
+            reconciled.insight = localNote.insight
+            reconciled.implication = localNote.implication
+            reconciled.action = localNote.action
+            reconciled.sourceURL = localNote.sourceURL
+            reconciled.tags = localNote.tags
+            reconciled.archived = localNote.archived
+            reconciled.updatedAt = localNote.updatedAt
+            notes.removeAll { $0.id == serverNote.id }
+            notes.insert(reconciled, at: 0)
+            scheduleSemanticIndex(reconciled)
+        }
+        persistNotes()
     }
 
     func searchNotes(query: String) async -> [KnowledgeNote] {
@@ -431,7 +506,9 @@ actor OfflineStore {
             constraints: update.constraints ?? profile.constraints,
             ignoredTopics: update.ignoredTopics ?? profile.ignoredTopics
         )
+        privateSyncMetadata.profileUpdatedAt = iso.string(from: Date())
         persistProfile()
+        persistPrivateSyncMetadata()
         return profile
     }
 
@@ -449,7 +526,9 @@ actor OfflineStore {
             impactScore: 0.0
         )
         decisions.insert(decision, at: 0)
+        privateSyncMetadata.decisionUpdatedAt[decision.id] = now
         persistDecisions()
+        persistPrivateSyncMetadata()
         return decision
     }
 
@@ -464,6 +543,7 @@ actor OfflineStore {
 
     func recordOutcome(_ request: OutcomeCreateRequest) -> SyncDecision? {
         guard let idx = decisions.firstIndex(where: { $0.id == request.decisionId }) else {
+            let now = iso.string(from: Date())
             let synthesized = SyncDecision(
                 id: request.decisionId,
                 decision: "Decision",
@@ -471,12 +551,14 @@ actor OfflineStore {
                 project: "",
                 assumptions: [],
                 contextTags: [],
-                createdAt: iso.string(from: Date()),
+                createdAt: now,
                 outcome: request.outcome,
                 impactScore: request.impactScore
             )
             decisions.insert(synthesized, at: 0)
+            privateSyncMetadata.decisionUpdatedAt[synthesized.id] = now
             persistDecisions()
+            persistPrivateSyncMetadata()
             return synthesized
         }
 
@@ -494,7 +576,9 @@ actor OfflineStore {
         )
 
         decisions[idx] = updated
+        privateSyncMetadata.decisionUpdatedAt[updated.id] = iso.string(from: Date())
         persistDecisions()
+        persistPrivateSyncMetadata()
         return updated
     }
 
@@ -514,6 +598,248 @@ actor OfflineStore {
         insights.insert(insight, at: 0)
         persistInsights()
         return insight
+    }
+
+    func recordFeedback(_ request: FeedbackRequest) {
+        // Preview interactions are disposable. They must not train ranking or
+        // enter the private-sync payload used by the person's real captures.
+        guard !isDemoModeEnabled() else { return }
+        let cleaned = request.item.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return }
+        feedback.insert(
+            LocalFeedbackEvent(
+                item: cleaned,
+                useful: request.useful,
+                acted: request.acted
+            ),
+            at: 0
+        )
+        // A bounded history is enough to learn ranking preferences without
+        // letting feedback consume the iCloud key-value quota indefinitely.
+        feedback = Array(feedback.prefix(500))
+        persistFeedback()
+    }
+
+    func privateSyncPayload(deviceID: String) -> PrivateSyncPayload {
+        let syncedNotes = notes.filter { !$0.id.hasPrefix("demo-note-") }
+        let syncedDecisions = decisions.filter { !$0.id.hasPrefix("demo-decision-") }
+        let syncedInsights = insights.filter { !$0.id.hasPrefix("demo-insight-") }
+        let demoFeedbackItems = Set(
+            notes.filter { $0.id.hasPrefix("demo-note-") }.map(\.title) +
+                decisions.filter { $0.id.hasPrefix("demo-decision-") }.map(\.decision)
+        )
+        let syncedProfile = isDemoProfile(profile) ? .empty : profile
+        let syncedDecisionIDs = Set(syncedDecisions.map(\.id))
+
+        return PrivateSyncPayload(
+            notes: syncedNotes,
+            deletedNoteIDs: privateSyncMetadata.deletedNoteIDs.filter { !$0.key.hasPrefix("demo-note-") },
+            profile: syncedProfile,
+            profileUpdatedAt: isDemoProfile(profile) ? "" : privateSyncMetadata.profileUpdatedAt,
+            decisions: syncedDecisions,
+            decisionUpdatedAt: privateSyncMetadata.decisionUpdatedAt.filter { syncedDecisionIDs.contains($0.key) },
+            insights: syncedInsights,
+            feedback: feedback.filter { !demoFeedbackItems.contains($0.item) },
+            modifiedAt: iso.string(from: Date()),
+            deviceID: deviceID
+        )
+    }
+
+    func mergePrivateSyncPayload(_ remote: PrivateSyncPayload, deviceID: String) -> PrivateSyncPayload {
+        let local = privateSyncPayload(deviceID: deviceID)
+        let merged = Self.mergedPrivateSyncPayload(local: local, remote: remote, deviceID: deviceID)
+
+        notes = merged.notes
+        profile = merged.profile
+        decisions = merged.decisions
+        insights = merged.insights
+        feedback = merged.feedback
+        privateSyncMetadata = PrivateSyncMetadata(
+            deletedNoteIDs: merged.deletedNoteIDs,
+            profileUpdatedAt: merged.profileUpdatedAt,
+            decisionUpdatedAt: merged.decisionUpdatedAt
+        )
+        serverNotesMetadata = ServerNoteCacheMetadata()
+
+        persistNotes()
+        persistProfile()
+        persistDecisions()
+        persistInsights()
+        persistFeedback()
+        persistPrivateSyncMetadata()
+        persistServerNotesMetadata()
+        scheduleSemanticSynchronization()
+        return merged
+    }
+
+    static func mergedPrivateSyncPayload(
+        local: PrivateSyncPayload,
+        remote: PrivateSyncPayload,
+        deviceID: String,
+        now: Date = Date()
+    ) -> PrivateSyncPayload {
+        var tombstones = local.deletedNoteIDs
+        for (id, timestamp) in remote.deletedNoteIDs {
+            tombstones[id] = latestTimestamp(tombstones[id] ?? "", timestamp)
+        }
+
+        var notesByID: [String: KnowledgeNote] = [:]
+        for note in local.notes + remote.notes where !note.id.hasPrefix("demo-note-") {
+            guard let current = notesByID[note.id] else {
+                notesByID[note.id] = note
+                continue
+            }
+            let currentDate = current.updatedAt.isEmpty ? current.createdAt : current.updatedAt
+            let noteDate = note.updatedAt.isEmpty ? note.createdAt : note.updatedAt
+            if isNewer(noteDate, than: currentDate) {
+                notesByID[note.id] = note
+            }
+        }
+        var obsoleteTombstones: [String] = []
+        for (id, deletionTimestamp) in tombstones {
+            guard let note = notesByID[id] else { continue }
+            let noteTimestamp = note.updatedAt.isEmpty ? note.createdAt : note.updatedAt
+            if deletionWins(deletionTimestamp, over: noteTimestamp) {
+                notesByID.removeValue(forKey: id)
+            } else {
+                obsoleteTombstones.append(id)
+            }
+        }
+        for id in obsoleteTombstones {
+            tombstones.removeValue(forKey: id)
+        }
+
+        let useRemoteProfile: Bool
+        if isNewer(remote.profileUpdatedAt, than: local.profileUpdatedAt) {
+            useRemoteProfile = true
+        } else if isNewer(local.profileUpdatedAt, than: remote.profileUpdatedAt) {
+            useRemoteProfile = false
+        } else {
+            useRemoteProfile = profileRichness(remote.profile) > profileRichness(local.profile)
+        }
+        let mergedProfile = useRemoteProfile ? remote.profile : local.profile
+        let mergedProfileTimestamp = latestTimestamp(local.profileUpdatedAt, remote.profileUpdatedAt)
+
+        var decisionTimestamps = local.decisionUpdatedAt
+        for (id, timestamp) in remote.decisionUpdatedAt {
+            decisionTimestamps[id] = latestTimestamp(decisionTimestamps[id] ?? "", timestamp)
+        }
+        var decisionsByID: [String: SyncDecision] = [:]
+        var selectedDecisionTimestamps: [String: String] = [:]
+        let decisionSources = [
+            (local.decisions, local.decisionUpdatedAt),
+            (remote.decisions, remote.decisionUpdatedAt),
+        ]
+        for (sourceDecisions, sourceTimestamps) in decisionSources {
+            for decision in sourceDecisions where !decision.id.hasPrefix("demo-decision-") {
+                let candidateTimestamp = sourceTimestamps[decision.id] ?? decision.createdAt
+                guard let current = decisionsByID[decision.id] else {
+                    decisionsByID[decision.id] = decision
+                    selectedDecisionTimestamps[decision.id] = candidateTimestamp
+                    continue
+                }
+                let currentTimestamp = selectedDecisionTimestamps[decision.id] ?? current.createdAt
+                if isNewer(candidateTimestamp, than: currentTimestamp) ||
+                    (candidateTimestamp == currentTimestamp && decisionRichness(decision) > decisionRichness(current)) {
+                    decisionsByID[decision.id] = decision
+                    selectedDecisionTimestamps[decision.id] = candidateTimestamp
+                }
+            }
+        }
+        let decisionIDs = Set(decisionsByID.keys)
+        decisionTimestamps = decisionTimestamps.filter { decisionIDs.contains($0.key) }
+
+        var insightsByID: [String: SyncInsight] = [:]
+        for insight in local.insights + remote.insights where !insight.id.hasPrefix("demo-insight-") {
+            guard let current = insightsByID[insight.id] else {
+                insightsByID[insight.id] = insight
+                continue
+            }
+            if isNewer(insight.createdAt, than: current.createdAt) ||
+                (insight.createdAt == current.createdAt && insightRichness(insight) > insightRichness(current)) {
+                insightsByID[insight.id] = insight
+            }
+        }
+
+        var feedbackByID: [String: LocalFeedbackEvent] = [:]
+        for event in local.feedback + remote.feedback {
+            if let current = feedbackByID[event.id], !isNewer(event.createdAt, than: current.createdAt) {
+                continue
+            }
+            feedbackByID[event.id] = event
+        }
+
+        return PrivateSyncPayload(
+            schemaVersion: max(local.schemaVersion, remote.schemaVersion),
+            notes: notesByID.values.sorted {
+                if $0.updatedAt == $1.updatedAt { return $0.id < $1.id }
+                return isNewer($0.updatedAt, than: $1.updatedAt)
+            },
+            deletedNoteIDs: tombstones,
+            profile: mergedProfile,
+            profileUpdatedAt: mergedProfileTimestamp,
+            decisions: decisionsByID.values.sorted {
+                if $0.createdAt == $1.createdAt { return $0.id < $1.id }
+                return isNewer($0.createdAt, than: $1.createdAt)
+            },
+            decisionUpdatedAt: decisionTimestamps,
+            insights: insightsByID.values.sorted {
+                if $0.createdAt == $1.createdAt { return $0.id < $1.id }
+                return isNewer($0.createdAt, than: $1.createdAt)
+            },
+            feedback: Array(feedbackByID.values.sorted {
+                if $0.createdAt == $1.createdAt { return $0.id < $1.id }
+                return isNewer($0.createdAt, than: $1.createdAt)
+            }.prefix(500)),
+            modifiedAt: ISO8601DateFormatter().string(from: now),
+            deviceID: deviceID
+        )
+    }
+
+    private static func deletionWins(_ deletionTimestamp: String, over noteTimestamp: String) -> Bool {
+        guard !deletionTimestamp.isEmpty else { return false }
+        guard !noteTimestamp.isEmpty else { return true }
+        guard let deletionDate = parsedDate(deletionTimestamp) else { return true }
+        guard let noteDate = parsedDate(noteTimestamp) else { return true }
+        return deletionDate >= noteDate
+    }
+
+    private static func latestTimestamp(_ lhs: String, _ rhs: String) -> String {
+        if lhs.isEmpty { return rhs }
+        if rhs.isEmpty { return lhs }
+        return isNewer(rhs, than: lhs) ? rhs : lhs
+    }
+
+    private static func isNewer(_ lhs: String, than rhs: String) -> Bool {
+        switch (parsedDate(lhs), parsedDate(rhs)) {
+        case let (left?, right?): return left > right
+        case (_?, nil): return true
+        case (nil, _?): return false
+        case (nil, nil): return lhs > rhs
+        }
+    }
+
+    private static func parsedDate(_ value: String) -> Date? {
+        let formatter = ISO8601DateFormatter()
+        if let date = formatter.date(from: value) { return date }
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.date(from: value)
+    }
+
+    private static func profileRichness(_ profile: UserProfile) -> Int {
+        [profile.name, profile.role].filter { !$0.isEmpty }.count +
+            profile.goals.count + profile.interests.count + profile.currentProjects.count +
+            profile.constraints.count + profile.ignoredTopics.count
+    }
+
+    private static func decisionRichness(_ decision: SyncDecision) -> Int {
+        [decision.decision, decision.reason, decision.project, decision.outcome].filter { !$0.isEmpty }.count +
+            decision.assumptions.count + decision.contextTags.count
+    }
+
+    private static func insightRichness(_ insight: SyncInsight) -> Int {
+        [insight.title, insight.summary, insight.whyItMatters, insight.architecturalImplication, insight.nextAction]
+            .filter { !$0.isEmpty }.count + insight.tags.count
     }
 
     func ingestSummary(_ request: SummaryIngestRequest) -> IngestResult {
@@ -568,16 +894,38 @@ actor OfflineStore {
         let nowISO = iso.string(from: now)
         let dateString = Self.dateOnly(now)
 
-        let priorities: [SyncPriority] = buildPriorities(from: orderedNotes(), decisions: decisions)
+        let ordered = orderedNotes()
+        let includeDemo = isDemoModeEnabled()
+        let ranking = LocalPriorityEngine.rank(
+            notes: ordered,
+            decisions: decisions,
+            profile: profile,
+            feedback: feedback,
+            now: now,
+            includeDemo: includeDemo
+        )
+        let priorities = ranking.priorities
 
         let brief = priorities.isEmpty ? nil : PriorityBrief(
             date: dateString,
             priorities: priorities,
-            ignored: [],
+            ignored: ranking.ignoredTitles,
             emergingSignals: [],
             changesSinceYesterday: []
         )
         let today = buildTodayOutput(brief: brief, date: dateString, nowISO: nowISO)
+        let weeklyReview = LocalSynthesisEngine.weeklyReview(
+            notes: ordered,
+            priorities: ranking,
+            now: now,
+            includeDemo: includeDemo
+        )
+        let decisionReplay = LocalSynthesisEngine.decisionReplay(
+            notes: ordered,
+            priorities: ranking,
+            now: now,
+            includeDemo: includeDemo
+        )
 
         let activeProjectName = profile.currentProjects.first ?? ""
         let activeProject: ProjectContext? = activeProjectName.isEmpty ? nil : ProjectContext(
@@ -590,6 +938,13 @@ actor OfflineStore {
         )
 
         let signals = buildSignals(from: notes, insights: insights)
+        let signalSurfaces = LocalSignalEngine.build(
+            notes: ordered,
+            decisions: decisions,
+            priorities: ranking,
+            now: now,
+            includeDemo: includeDemo
+        )
 
         return SyncSnapshot(
             profile: SyncProfile(
@@ -603,22 +958,22 @@ actor OfflineStore {
             activeProject: activeProject,
             priorities: brief,
             today: today,
-            weeklyReview: nil,
-            decisionReplay: nil,
-            newsletter: nil,
-            whatMattersNow: nil,
-            signalTopPriorities: nil,
-            decisionQueue: nil,
-            actionReadyQueue: nil,
-            recurringPatterns: nil,
-            unresolvedTensions: nil,
-            contentCandidates: nil,
+            weeklyReview: weeklyReview,
+            decisionReplay: decisionReplay,
+            newsletter: latestNewsletter,
+            whatMattersNow: signalSurfaces.whatMattersNow,
+            signalTopPriorities: signalSurfaces.topPriorities,
+            decisionQueue: signalSurfaces.decisionQueue,
+            actionReadyQueue: signalSurfaces.actionReadyQueue,
+            recurringPatterns: signalSurfaces.recurringPatterns,
+            unresolvedTensions: signalSurfaces.unresolvedTensions,
+            contentCandidates: signalSurfaces.contentCandidates,
             resurfacedNow: nil,
             resurfacingRecurringTensions: nil,
             resurfacingWeeklyReviewCandidates: nil,
             resurfacingContentCandidates: nil,
             signalGraph: nil,
-            signalMatchingCounts: nil,
+            signalMatchingCounts: signalSurfaces.counts,
             recentDecisions: Array(decisions.prefix(50)),
             insights: Array(insights.prefix(50)),
             signals: signals,
@@ -626,10 +981,111 @@ actor OfflineStore {
                 date: dateString,
                 todaysPriorities: priorities.map { $0.title },
                 currentlyExploring: signals.map { $0.topic },
-                temporaryNotes: Array(orderedNotes().prefix(5).map { $0.title })
+                temporaryNotes: Array(ordered.prefix(5).map { $0.title })
             ),
             syncedAt: nowISO
         )
+    }
+
+    func generateNewsletterDraft(period: String, mode: String) -> NewsletterGenerationResult {
+        let now = Date()
+        let ranking = LocalPriorityEngine.rank(
+            notes: orderedNotes(),
+            decisions: decisions,
+            profile: profile,
+            feedback: feedback,
+            now: now,
+            includeDemo: isDemoModeEnabled()
+        )
+        guard let draft = LocalSynthesisEngine.newsletterDraft(
+            notes: notes,
+            decisions: decisions,
+            priorities: ranking,
+            period: period,
+            mode: mode,
+            now: now,
+            includeDemo: isDemoModeEnabled()
+        ) else {
+            return NewsletterGenerationResult(
+                status: "not_enough_material",
+                reason: "Not enough public-safe material yet.",
+                safeToPublish: false,
+                generatedAt: iso.string(from: now)
+            )
+        }
+
+        do {
+            try draft.markdown.write(to: newsletterMarkdownURL, atomically: true, encoding: .utf8)
+        } catch {
+            return NewsletterGenerationResult(
+                status: "error",
+                reason: "The draft could not be saved on this device.",
+                safeToPublish: false,
+                generatedAt: iso.string(from: now)
+            )
+        }
+
+        let generatedAt = iso.string(from: now)
+        latestNewsletter = SyncNewsletter(
+            status: draft.status,
+            mode: mode,
+            periodStart: draft.periodStart,
+            periodEnd: draft.periodEnd,
+            // Automated checks are necessary but not sufficient. Public export
+            // remains locked until the user reviews and approves the draft.
+            safeToPublish: false,
+            generatedAt: generatedAt,
+            title: draft.title,
+            subtitle: draft.subtitle,
+            preview: draft.preview,
+            sourceCountTotal: draft.sourceCountTotal,
+            sourceCountUsable: draft.sourceCountUsable,
+            safetyReport: SyncNewsletterSafetyReport(
+                safeToPublish: draft.safeToPublish,
+                remainingConcerns: draft.remainingConcerns,
+                recommendation: draft.recommendation
+            ),
+            tasteGate: SyncNewsletterTasteGate(
+                passed: draft.tasteReasons.isEmpty,
+                score: draft.tasteScore,
+                reasons: draft.tasteReasons
+            ),
+            markdownPath: newsletterMarkdownURL.path
+        )
+        persistNewsletter()
+        return NewsletterGenerationResult(
+            status: draft.status,
+            reason: nil,
+            safeToPublish: false,
+            generatedAt: generatedAt
+        )
+    }
+
+    func approveNewsletterDraft() -> Bool {
+        guard let newsletter = latestNewsletter,
+              newsletter.isEligibleForApproval,
+              let markdown = try? String(contentsOfFile: newsletter.markdownPath, encoding: .utf8),
+              LocalSynthesisEngine.publicationConcerns(in: markdown).isEmpty else {
+            return false
+        }
+
+        latestNewsletter = newsletter.withPublicationStatus(
+            status: "approved",
+            safeToPublish: true,
+            recommendation: "Approved by you after review. Sharing remains a manual action."
+        )
+        persistNewsletter()
+        return true
+    }
+
+    func rejectNewsletterDraft() {
+        guard let newsletter = latestNewsletter else { return }
+        latestNewsletter = newsletter.withPublicationStatus(
+            status: "rejected",
+            safeToPublish: false,
+            recommendation: "Rejected by you. Regenerate or revise the source material before sharing."
+        )
+        persistNewsletter()
     }
 
     private func buildTodayOutput(brief: PriorityBrief?, date: String, nowISO: String) -> SyncTodayOutput? {
@@ -669,15 +1125,22 @@ actor OfflineStore {
     }
 
     func isDemoModeEnabled() -> Bool {
-        if let existing = UserDefaults.standard.object(forKey: demoModeKey) as? Bool {
-            return existing
+        let defaults = UserDefaults.standard
+        if !defaults.bool(forKey: demoModeMigrationKey) {
+            defaults.set(true, forKey: demoModeMigrationKey)
+            defaults.set(false, forKey: demoModeKey)
+            removeDemoContent()
         }
-        UserDefaults.standard.set(true, forKey: demoModeKey)
-        return true
+        return defaults.bool(forKey: demoModeKey)
     }
 
     func setDemoModeEnabled(_ enabled: Bool) {
-        UserDefaults.standard.set(enabled, forKey: demoModeKey)
+        let defaults = UserDefaults.standard
+        defaults.set(true, forKey: demoModeMigrationKey)
+        defaults.set(enabled, forKey: demoModeKey)
+        if !enabled {
+            removeDemoContent()
+        }
     }
 
     @discardableResult
@@ -686,11 +1149,11 @@ actor OfflineStore {
             return false
         }
 
-        if !force {
-            let hasContent = !notes.isEmpty || !decisions.isEmpty || !insights.isEmpty
-            if hasContent {
-                return false
-            }
+        let hasRealContent = notes.contains { !$0.id.hasPrefix("demo-note-") } ||
+            decisions.contains { !$0.id.hasPrefix("demo-decision-") } ||
+            insights.contains { !$0.id.hasPrefix("demo-insight-") }
+        if hasRealContent {
+            return false
         }
 
         let now = Date()
@@ -731,8 +1194,8 @@ actor OfflineStore {
                 id: "demo-note-2",
                 title: "Offline continuity increases trust",
                 insight: "Users continue capturing when they know nothing is lost without network.",
-                implication: "Queue every mutation and surface sync state clearly in UI.",
-                action: "Keep offline queue visible and replay automatically on reconnect.",
+                implication: "Save every change locally first and make private sync state clear.",
+                action: "Keep captures available instantly, then reconcile them through iCloud.",
                 sourceURL: "local://demo/offline",
                 tags: ["offline", "trust", "ux"],
                 createdAt: previousISO,
@@ -759,7 +1222,7 @@ actor OfflineStore {
                 decision: "Prioritize offline-first reliability for this release",
                 reason: "Without reliable offline behavior, core capture and decision flow breaks.",
                 project: "SimpliXio",
-                assumptions: ["Most sessions start without immediate backend connectivity"],
+                assumptions: ["Core capture must never depend on network availability"],
                 contextTags: ["release", "offline"],
                 createdAt: previousISO,
                 outcome: "Adopted as release gate",
@@ -784,8 +1247,8 @@ actor OfflineStore {
                 title: "Reliability is a product feature",
                 summary: "Perceived intelligence falls when basic interactions fail.",
                 whyItMatters: "App trust is built from predictable response to every tap.",
-                architecturalImplication: "All user mutations should be queue-backed.",
-                nextAction: "Instrument button actions and display sync progress feedback.",
+                architecturalImplication: "All user mutations should commit locally before synchronization.",
+                nextAction: "Display clear local-save and private iCloud sync feedback.",
                 confidence: 0.88,
                 tags: ["quality", "ux"],
                 relatedProject: "SimpliXio",
@@ -797,7 +1260,7 @@ actor OfflineStore {
                 summary: "Acted/not-acted outcomes help ranking converge on useful work.",
                 whyItMatters: "The system should learn what actually moves decisions forward.",
                 architecturalImplication: "Feed feedback tags into priority scoring.",
-                nextAction: "Promote acted items and demote repeatedly ignored signals.",
+                nextAction: "Remove completed items from today and demote repeatedly unhelpful signals.",
                 confidence: 0.84,
                 tags: ["learning", "priorities"],
                 relatedProject: "SimpliXio",
@@ -810,6 +1273,41 @@ actor OfflineStore {
         persistDecisions()
         persistInsights()
         return true
+    }
+
+    private func removeDemoContent() {
+        let demoNoteIDs = notes.filter { $0.id.hasPrefix("demo-note-") }.map(\.id)
+        let demoFeedbackItems = Set(
+            notes.filter { $0.id.hasPrefix("demo-note-") }.map(\.title) +
+                decisions.filter { $0.id.hasPrefix("demo-decision-") }.map(\.decision)
+        )
+        notes.removeAll { $0.id.hasPrefix("demo-note-") }
+        decisions.removeAll { $0.id.hasPrefix("demo-decision-") }
+        insights.removeAll { $0.id.hasPrefix("demo-insight-") }
+        feedback.removeAll { demoFeedbackItems.contains($0.item) }
+        privateSyncMetadata.deletedNoteIDs = privateSyncMetadata.deletedNoteIDs.filter {
+            !$0.key.hasPrefix("demo-note-")
+        }
+        privateSyncMetadata.decisionUpdatedAt = privateSyncMetadata.decisionUpdatedAt.filter {
+            !$0.key.hasPrefix("demo-decision-")
+        }
+        if isDemoProfile(profile) {
+            profile = .empty
+            privateSyncMetadata.profileUpdatedAt = ""
+        }
+        persistNotes()
+        persistProfile()
+        persistDecisions()
+        persistInsights()
+        persistFeedback()
+        persistPrivateSyncMetadata()
+        for id in demoNoteIDs {
+            scheduleSemanticRemoval(id: id)
+        }
+    }
+
+    private func isDemoProfile(_ value: UserProfile) -> Bool {
+        value.name == "Demo Operator" && value.role == "Decision Lead"
     }
 
     private static func dateOnly(_ date: Date) -> String {
@@ -940,5 +1438,21 @@ actor OfflineStore {
     private func persistInsights() {
         guard let data = try? encoder.encode(insights) else { return }
         try? data.write(to: insightsURL, options: .atomic)
+    }
+
+    private func persistFeedback() {
+        guard let data = try? encoder.encode(feedback) else { return }
+        try? data.write(to: feedbackURL, options: .atomic)
+    }
+
+    private func persistPrivateSyncMetadata() {
+        guard let data = try? encoder.encode(privateSyncMetadata) else { return }
+        try? data.write(to: privateSyncMetadataURL, options: .atomic)
+    }
+
+    private func persistNewsletter() {
+        guard let latestNewsletter,
+              let data = try? encoder.encode(latestNewsletter) else { return }
+        try? data.write(to: newsletterURL, options: .atomic)
     }
 }

@@ -18,11 +18,21 @@ enum CortexColor {
 
     // Text
     static let textPrimary   = Color.primary
-    static let textSecondary = Color.secondary
-    static let textTertiary  = Color(white: 0.5)
+    static let textSecondary = Color(
+        light: Color(white: 0.34),
+        dark: Color(white: 0.72)
+    )
+    static let textTertiary = Color(
+        light: Color(white: 0.44),
+        dark: Color(white: 0.62)
+    )
 
     // Accent — quiet blue-violet, not flashy
     static let accent    = Color(red: 0.38, green: 0.42, blue: 1.0) // #616BFF
+    static let accentText = Color(
+        light: Color(red: 0.28, green: 0.32, blue: 0.86),
+        dark: Color(red: 0.62, green: 0.65, blue: 1.0)
+    )
     static let accentDim = Color(red: 0.38, green: 0.42, blue: 1.0).opacity(0.15)
     static let accentForeground = Color.white
     static let strokeSubtle = Color(light: Color.black.opacity(0.08), dark: Color.white.opacity(0.12))
@@ -178,6 +188,7 @@ extension View {
 // MARK: - Button styles
 
 struct CortexPrimaryButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
     var fullWidth: Bool = false
 
     func makeBody(configuration: Configuration) -> some View {
@@ -195,13 +206,15 @@ struct CortexPrimaryButtonStyle: ButtonStyle {
                 RoundedRectangle(cornerRadius: CortexRadius.large, style: .continuous)
                     .stroke(CortexColor.accent.opacity(0.35), lineWidth: 1)
             )
-            .opacity(configuration.isPressed ? 0.9 : 1)
-            .scaleEffect(configuration.isPressed ? 0.99 : 1)
+            .opacity(isEnabled ? (configuration.isPressed ? 0.9 : 1) : 0.42)
+            .scaleEffect(isEnabled && configuration.isPressed ? 0.99 : 1)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .animation(.easeOut(duration: 0.12), value: isEnabled)
     }
 }
 
 struct CortexSecondaryButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
     var fullWidth: Bool = false
 
     func makeBody(configuration: Configuration) -> some View {
@@ -220,13 +233,15 @@ struct CortexSecondaryButtonStyle: ButtonStyle {
                     .stroke(CortexColor.strokeSubtle, lineWidth: 1)
             )
             .cortexShadow()
-            .opacity(configuration.isPressed ? 0.94 : 1)
-            .scaleEffect(configuration.isPressed ? 0.99 : 1)
+            .opacity(isEnabled ? (configuration.isPressed ? 0.94 : 1) : 0.42)
+            .scaleEffect(isEnabled && configuration.isPressed ? 0.99 : 1)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .animation(.easeOut(duration: 0.12), value: isEnabled)
     }
 }
 
 struct CortexChipButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
     var prominent: Bool = false
 
     func makeBody(configuration: Configuration) -> some View {
@@ -243,8 +258,9 @@ struct CortexChipButtonStyle: ButtonStyle {
                 Capsule(style: .continuous)
                     .stroke(prominent ? CortexColor.accent.opacity(0.2) : CortexColor.strokeSubtle, lineWidth: 1)
             )
-            .opacity(configuration.isPressed ? 0.92 : 1)
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .opacity(isEnabled ? (configuration.isPressed ? 0.92 : 1) : 0.42)
+            .scaleEffect(isEnabled && configuration.isPressed ? 0.98 : 1)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .animation(.easeOut(duration: 0.12), value: isEnabled)
     }
 }

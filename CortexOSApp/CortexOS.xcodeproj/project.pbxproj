@@ -7,32 +7,36 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		00C0AB5D9637541E8674C38F /* CaptureQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5721E1150AE4F7C3C1920DEF /* CaptureQueue.swift */; };
 		0366465D10533CCEDD42C164 /* KnowledgeListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A60520F36A8F01A98FEA4894 /* KnowledgeListView.swift */; };
 		05E10F92044F4ACA4C085BB0 /* WidgetData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88787A9DF70A154D80BA2F03 /* WidgetData.swift */; };
-		08831958774AD3C955AB9E4C /* CaptureQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5721E1150AE4F7C3C1920DEF /* CaptureQueue.swift */; };
+		064C4CF77C5C7B48EA0E6509 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 924CF45C5D21A8306580F594 /* Assets.xcassets */; };
+		08E44101CB920E4384B9071A /* PrivateSyncPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AB08734FD1CC1B212623781 /* PrivateSyncPayload.swift */; };
+		0948730297F480A51D70F6EA /* LocalPriorityEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 360A21B45A35CC626FC34CB1 /* LocalPriorityEngine.swift */; };
 		0D7878F94884FD5F78410E88 /* OfflineStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A2BF1090AE67AB15EDFF542 /* OfflineStore.swift */; };
 		11706CE8AFE9F67844B19CB4 /* KnowledgeNote.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7069ADE1D4517A68074A941 /* KnowledgeNote.swift */; };
 		1A7D64121DCB76486B6E85A6 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C81BB2D559BBB48F8E3C773 /* ContentView.swift */; };
+		1CA8DF3E8C910F54366CEE0A /* PrivateSyncPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AB08734FD1CC1B212623781 /* PrivateSyncPayload.swift */; };
 		1E6FACEA91A3D1F792EEE77F /* CortexEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92F7EAF5E556E281CE9F848D /* CortexEngine.swift */; };
+		1FAE05E43C772925CAC5E5CA /* LocalPriorityEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 360A21B45A35CC626FC34CB1 /* LocalPriorityEngine.swift */; };
 		20C580E96180CFE49CF17075 /* ScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3C27B713A626BD359E35539 /* ScreenshotTests.swift */; };
 		222E0E5A70B362FA23B04C6D /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = FC40705144D12DF1820F7849 /* PrivacyInfo.xcprivacy */; };
+		26ACB5013EFD9F0992946DBD /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = BC806BD6242B6BFF98256484 /* PrivacyInfo.xcprivacy */; };
 		2AF7B10CE2929DCEC41ABC2B /* DailyFocusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06C2841B2C4D29372134655D /* DailyFocusView.swift */; };
-		2F1533E0941F02C7DF1279B5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = ED492439B9253F6CF71DC93B /* Assets.xcassets */; };
 		326CB362105D1862F7357289 /* ContextTag.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA75246885E7EFCE5CCB72D6 /* ContextTag.swift */; };
 		39E7BD66B5448644897BD5BA /* SnapshotCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F4BACA0E270BC81467132B4 /* SnapshotCache.swift */; };
 		3A61D86D3CA92C823F1285B0 /* CortexEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92F7EAF5E556E281CE9F848D /* CortexEngine.swift */; };
+		4005BF0FF7898DDA9A8B65D0 /* ICloudSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB672B6D9B20B07ADA5A042A /* ICloudSyncService.swift */; };
+		43FC3EB054AFA68D2A959D84 /* LocalSignalEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FF0307566AC503D9FD0284B /* LocalSignalEngine.swift */; };
 		443360C77C36197F62AA03BB /* DailyFocusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06C2841B2C4D29372134655D /* DailyFocusView.swift */; };
 		44BEBB96CB232D95DF6369B3 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 899503FAB956EBF2B27DCB11 /* PrivacyInfo.xcprivacy */; };
+		488DD7AAE3C4D3B90C8B0650 /* LocalSignalEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FF0307566AC503D9FD0284B /* LocalSignalEngine.swift */; };
 		48BBE61BA13401AF4F01EEAA /* InsightCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = D32E0B3A04E3425EAC7332C6 /* InsightCard.swift */; };
 		4AC54A00CAB720DE67F1877E /* SyncSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A4B10FE4642391FE81849AE /* SyncSnapshot.swift */; };
 		4DDE48AC364FC596FBACC664 /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC832AEEF1CE27B7F0470381 /* EmptyStateView.swift */; };
 		4E474B36AC5ED16723A8089E /* DecisionReplayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69BD06BB5DCA5D34B3AA4AF1 /* DecisionReplayView.swift */; };
 		4EC4DA2D2F83A50C1CD52574 /* SignalWorkbenchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4959C87776EA0B52D76B22E3 /* SignalWorkbenchView.swift */; };
 		5325B0BC982BBDDBE0118C93 /* KnowledgeNote.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7069ADE1D4517A68074A941 /* KnowledgeNote.swift */; };
-		53AED17EEE30BD3659D1E0AF /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7ED83F6AB0177D62051212CE /* APIService.swift */; };
 		599AC0F2169EBA44103864FF /* DecisionReplayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69BD06BB5DCA5D34B3AA4AF1 /* DecisionReplayView.swift */; };
-		5EA3FEF1B505A295927D2771 /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7ED83F6AB0177D62051212CE /* APIService.swift */; };
 		5EB49BCCA4D82078BA878659 /* MemoryExplorerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B9D01C665875FEE55307014 /* MemoryExplorerView.swift */; };
 		65CC8228420AD80AB5441AA4 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDD8EC4BF8C84A2B269717ED /* HistoryView.swift */; };
 		6600B8F112708F105AAECDA6 /* SemanticMemoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 436DD48DD5D9F54BA6AD94CE /* SemanticMemoryStore.swift */; };
@@ -44,17 +48,17 @@
 		6BE0D7410BEDFE676EF3A285 /* SyncSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A4B10FE4642391FE81849AE /* SyncSnapshot.swift */; };
 		6D4A94B835D700183C584BBD /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C81BB2D559BBB48F8E3C773 /* ContentView.swift */; };
 		6D4E79118F9730FEAB75B942 /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1040BF0BCDC6B775AB8BFEB /* UserProfile.swift */; };
-		6FE7D9E9743A0465B1DE8C0D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = ED492439B9253F6CF71DC93B /* Assets.xcassets */; };
 		720927F71898C293F1268EDB /* InsightFeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7313EFB35830133EE4155F5C /* InsightFeedView.swift */; };
-		731236783EB98B9B2D6F1259 /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7ED83F6AB0177D62051212CE /* APIService.swift */; };
 		7764FA1E1C3891C4F4A743ED /* DecisionResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10A101E749D081A993029F5 /* DecisionResult.swift */; };
 		7987FEC145A4FF0FF7CB7688 /* CortexOS-Widget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 51C2BB591E25960A5E60944C /* CortexOS-Widget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		7EF46C33519D93888968E135 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDD8EC4BF8C84A2B269717ED /* HistoryView.swift */; };
 		885CAE17980EB7774400917C /* QuickCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD13E98FF86C1B2615DFB8AC /* QuickCaptureView.swift */; };
 		889F953825322B4806FC804D /* SemanticMemoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 436DD48DD5D9F54BA6AD94CE /* SemanticMemoryStore.swift */; };
+		8903DE6BD7B56AF86189025B /* LocalSynthesisEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 522F604C463F303AFC8EA524 /* LocalSynthesisEngine.swift */; };
 		8B63818E483ACDFE8C363FB7 /* CortexOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A68B29F8468FF48C1DAFE09 /* CortexOSApp.swift */; };
 		8B71EB9F47C122FC994FC4A4 /* DecisionResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10A101E749D081A993029F5 /* DecisionResult.swift */; };
 		8D3B13E29EF31A507B4BF18A /* SummaryIngestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDAF6B17B98DBF6A1DDF49E0 /* SummaryIngestView.swift */; };
+		8E73074C678DE9E8EEA19E42 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 57E8961586414E083A83BF5B /* Assets.xcassets */; };
 		90606228EEE67BE9DAEADB50 /* SemanticMemoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 436DD48DD5D9F54BA6AD94CE /* SemanticMemoryStore.swift */; };
 		91D87336D3B7CE8F34CC9FCF /* SignalWorkbenchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4959C87776EA0B52D76B22E3 /* SignalWorkbenchView.swift */; };
 		92CBE1447DDC7F3140476B3F /* MemoryExplorerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B9D01C665875FEE55307014 /* MemoryExplorerView.swift */; };
@@ -66,20 +70,22 @@
 		A2DC5746E11F673269F850B8 /* OfflineStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A2BF1090AE67AB15EDFF542 /* OfflineStore.swift */; };
 		A7755865642904B4EE29ABA8 /* WeeklyReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08589786E44AD390B58F98DD /* WeeklyReviewView.swift */; };
 		AC01035F727FEFB781BECF12 /* NewsletterWorkbenchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BB198D1B3123FE870A19957 /* NewsletterWorkbenchView.swift */; };
+		B1314C7AB50EE6AF56065EE8 /* LocalPriorityEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 360A21B45A35CC626FC34CB1 /* LocalPriorityEngine.swift */; };
 		B7A4DC0A6632E9194C6DC7EC /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B245C0F1ACBE90E1E66E446B /* Theme.swift */; };
 		BA172640530928DA8F2B28ED /* DecisionHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09AE60E8198E1E03FF2C9DC2 /* DecisionHistoryView.swift */; };
 		BBFADD1949CF1D30AF5A1897 /* KnowledgeNote.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7069ADE1D4517A68074A941 /* KnowledgeNote.swift */; };
-		BCE1DF7106C1F89DD454E75C /* CaptureQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5721E1150AE4F7C3C1920DEF /* CaptureQueue.swift */; };
 		BDDB449FBB5894E6A6E83E2D /* SnapshotCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F4BACA0E270BC81467132B4 /* SnapshotCache.swift */; };
 		C0CDF557F0DF8483EF306DB8 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B245C0F1ACBE90E1E66E446B /* Theme.swift */; };
 		C0DE21C721526FAEA51B8059 /* InsightFeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7313EFB35830133EE4155F5C /* InsightFeedView.swift */; };
+		C273DA54822C115F5D121C5E /* PrivateSyncPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AB08734FD1CC1B212623781 /* PrivateSyncPayload.swift */; };
 		C4B927CD8B368522B79FD4B4 /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1040BF0BCDC6B775AB8BFEB /* UserProfile.swift */; };
 		D031C436E88593B84166E594 /* ServerHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B2CD3E21B3B4C11494D5E8A /* ServerHealth.swift */; };
 		D38499C6FDC41865988496CE /* ConfidenceIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3A44FD6A1185BFD939E4A49 /* ConfidenceIndicator.swift */; };
 		D65AD24A1E24B562E3D365A7 /* InsightCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = D32E0B3A04E3425EAC7332C6 /* InsightCard.swift */; };
 		D6AC8321F0BD49AABB4362B9 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B245C0F1ACBE90E1E66E446B /* Theme.swift */; };
+		D7ACED4470EC5CDDDFBD6E2E /* ICloudSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB672B6D9B20B07ADA5A042A /* ICloudSyncService.swift */; };
 		DA57948E1DA2B2430F40198D /* ConfidenceIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3A44FD6A1185BFD939E4A49 /* ConfidenceIndicator.swift */; };
-		DCB587E75FE3A372983B8025 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = ED492439B9253F6CF71DC93B /* Assets.xcassets */; };
+		DD9EF93691196F00E7FCE141 /* LocalSignalEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FF0307566AC503D9FD0284B /* LocalSignalEngine.swift */; };
 		E4F2CBE9498398D474D0D6E6 /* WeeklyReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08589786E44AD390B58F98DD /* WeeklyReviewView.swift */; };
 		E5AA94159D504CF0F1F0C93A /* ContextTag.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA75246885E7EFCE5CCB72D6 /* ContextTag.swift */; };
 		E5AB17A1366B8E9FA89667CC /* ServerHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B2CD3E21B3B4C11494D5E8A /* ServerHealth.swift */; };
@@ -94,10 +100,14 @@
 		F42DC43965C8517A6A563BEC /* CortexWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7528E757C3F3E937B835C026 /* CortexWatchApp.swift */; };
 		F493F39713E5F26E86430BAC /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F40F5AE2A6234C33C5D518E0 /* SettingsView.swift */; };
 		F55CE3FD2BD0007E434AABDB /* SyncSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A4B10FE4642391FE81849AE /* SyncSnapshot.swift */; };
+		F5E058916C059B02C793B780 /* LocalSynthesisEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 522F604C463F303AFC8EA524 /* LocalSynthesisEngine.swift */; };
 		F6FC1C030619DF3915824951 /* WatchDecisionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90E2603A59A1D4A34C5E0D3D /* WatchDecisionModel.swift */; };
 		F7E503F388B685A2F6645292 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F40F5AE2A6234C33C5D518E0 /* SettingsView.swift */; };
 		F9BB204E893F5F8AC8C7E7C1 /* WidgetData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88787A9DF70A154D80BA2F03 /* WidgetData.swift */; };
 		F9BD07598596D06BC7CCA9F4 /* DecisionHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09AE60E8198E1E03FF2C9DC2 /* DecisionHistoryView.swift */; };
+		FA779475AE4AEB63A9EAA176 /* ICloudSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB672B6D9B20B07ADA5A042A /* ICloudSyncService.swift */; };
+		FB457F72A9BDCBAA2AD8FE58 /* LocalSynthesisEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 522F604C463F303AFC8EA524 /* LocalSynthesisEngine.swift */; };
+		FE2F3DB5EB64DA8DB87225C8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 55A7C5E1676627C00E5371C5 /* Assets.xcassets */; };
 		FEA350E145EDA5EF44589E39 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEF3C538200AE588B7C603D3 /* ProfileView.swift */; };
 /* End PBXBuildFile section */
 
@@ -163,15 +173,20 @@
 		06C2841B2C4D29372134655D /* DailyFocusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyFocusView.swift; sourceTree = "<group>"; };
 		08589786E44AD390B58F98DD /* WeeklyReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyReviewView.swift; sourceTree = "<group>"; };
 		09AE60E8198E1E03FF2C9DC2 /* DecisionHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DecisionHistoryView.swift; sourceTree = "<group>"; };
+		0AB08734FD1CC1B212623781 /* PrivateSyncPayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivateSyncPayload.swift; sourceTree = "<group>"; };
 		18CC18E5DABD72F099F2C8C5 /* CortexOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = CortexOS.entitlements; sourceTree = "<group>"; };
 		2BB198D1B3123FE870A19957 /* NewsletterWorkbenchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewsletterWorkbenchView.swift; sourceTree = "<group>"; };
 		2E1AEDA2C9B14B9466534033 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		2FF0307566AC503D9FD0284B /* LocalSignalEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalSignalEngine.swift; sourceTree = "<group>"; };
+		360A21B45A35CC626FC34CB1 /* LocalPriorityEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalPriorityEngine.swift; sourceTree = "<group>"; };
 		3A4B10FE4642391FE81849AE /* SyncSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncSnapshot.swift; sourceTree = "<group>"; };
 		436DD48DD5D9F54BA6AD94CE /* SemanticMemoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SemanticMemoryStore.swift; sourceTree = "<group>"; };
 		4959C87776EA0B52D76B22E3 /* SignalWorkbenchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalWorkbenchView.swift; sourceTree = "<group>"; };
 		51C2BB591E25960A5E60944C /* CortexOS-Widget.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = "CortexOS-Widget.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		522F604C463F303AFC8EA524 /* LocalSynthesisEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalSynthesisEngine.swift; sourceTree = "<group>"; };
 		53D8211C01BE42077D99A901 /* SimpliXio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SimpliXio.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		5721E1150AE4F7C3C1920DEF /* CaptureQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureQueue.swift; sourceTree = "<group>"; };
+		55A7C5E1676627C00E5371C5 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		57E8961586414E083A83BF5B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		5C81BB2D559BBB48F8E3C773 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		63BCBB6AA2F201EA97963BB5 /* CortexOS-macOS-UITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "CortexOS-macOS-UITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		686A3F0DF07BE408DC36644A /* CortexOS-iOS-UITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = "CortexOS-iOS-UITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -182,19 +197,20 @@
 		7528E757C3F3E937B835C026 /* CortexWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CortexWatchApp.swift; sourceTree = "<group>"; };
 		78FFD258AC33EA641453E77D /* CortexOS-iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "CortexOS-iOS.entitlements"; sourceTree = "<group>"; };
 		7A2BF1090AE67AB15EDFF542 /* OfflineStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineStore.swift; sourceTree = "<group>"; };
-		7ED83F6AB0177D62051212CE /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
 		88787A9DF70A154D80BA2F03 /* WidgetData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetData.swift; sourceTree = "<group>"; };
 		899503FAB956EBF2B27DCB11 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		8A68B29F8468FF48C1DAFE09 /* CortexOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CortexOSApp.swift; sourceTree = "<group>"; };
 		8AD6440A43273DF9A9F53A7B /* SimpliXio.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SimpliXio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8F4BACA0E270BC81467132B4 /* SnapshotCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotCache.swift; sourceTree = "<group>"; };
 		90E2603A59A1D4A34C5E0D3D /* WatchDecisionModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchDecisionModel.swift; sourceTree = "<group>"; };
+		924CF45C5D21A8306580F594 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		92F7EAF5E556E281CE9F848D /* CortexEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CortexEngine.swift; sourceTree = "<group>"; };
 		9E7342144E74BA7C4A716880 /* CortexOS-Widget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "CortexOS-Widget.entitlements"; sourceTree = "<group>"; };
 		A3C27B713A626BD359E35539 /* ScreenshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotTests.swift; sourceTree = "<group>"; };
 		A60520F36A8F01A98FEA4894 /* KnowledgeListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnowledgeListView.swift; sourceTree = "<group>"; };
 		AA75246885E7EFCE5CCB72D6 /* ContextTag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextTag.swift; sourceTree = "<group>"; };
 		B245C0F1ACBE90E1E66E446B /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		BC806BD6242B6BFF98256484 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		BD13E98FF86C1B2615DFB8AC /* QuickCaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCaptureView.swift; sourceTree = "<group>"; };
 		C10A101E749D081A993029F5 /* DecisionResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DecisionResult.swift; sourceTree = "<group>"; };
 		C1838F4ACAA8DDA81537AA2B /* CortexWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CortexWidget.swift; sourceTree = "<group>"; };
@@ -207,7 +223,7 @@
 		E3A44FD6A1185BFD939E4A49 /* ConfidenceIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfidenceIndicator.swift; sourceTree = "<group>"; };
 		E7C07A176E5DAFAE02282C9F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		E7C6B5F42F17BEC61C538D8B /* SimpliXio Watch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "SimpliXio Watch.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		ED492439B9253F6CF71DC93B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		EB672B6D9B20B07ADA5A042A /* ICloudSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ICloudSyncService.swift; sourceTree = "<group>"; };
 		EDAF6B17B98DBF6A1DDF49E0 /* SummaryIngestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryIngestView.swift; sourceTree = "<group>"; };
 		F2D9FF7EE8594EA332A3A31A /* CortexOS-watchOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "CortexOS-watchOS.entitlements"; sourceTree = "<group>"; };
 		F40F5AE2A6234C33C5D518E0 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -219,7 +235,6 @@
 		2AEE41587F14374356954FFC /* Shared */ = {
 			isa = PBXGroup;
 			children = (
-				ED492439B9253F6CF71DC93B /* Assets.xcassets */,
 				8A68B29F8468FF48C1DAFE09 /* CortexOSApp.swift */,
 				899503FAB956EBF2B27DCB11 /* PrivacyInfo.xcprivacy */,
 				A082B6CA6C270BFCEE9138CD /* Components */,
@@ -234,6 +249,7 @@
 		2CDD6AD89D78BA23AAB6B167 /* watchOS */ = {
 			isa = PBXGroup;
 			children = (
+				57E8961586414E083A83BF5B /* Assets.xcassets */,
 				F2D9FF7EE8594EA332A3A31A /* CortexOS-watchOS.entitlements */,
 				7528E757C3F3E937B835C026 /* CortexWatchApp.swift */,
 				E7C07A176E5DAFAE02282C9F /* Info.plist */,
@@ -303,6 +319,7 @@
 		5625726EEC4A1BD1548B0721 /* iOS */ = {
 			isa = PBXGroup;
 			children = (
+				924CF45C5D21A8306580F594 /* Assets.xcassets */,
 				78FFD258AC33EA641453E77D /* CortexOS-iOS.entitlements */,
 				0186408DFF9E447F42325042 /* Info.plist */,
 			);
@@ -315,6 +332,7 @@
 				9E7342144E74BA7C4A716880 /* CortexOS-Widget.entitlements */,
 				C1838F4ACAA8DDA81537AA2B /* CortexWidget.swift */,
 				00ED7AE22F2F95DF3805DE31 /* Info.plist */,
+				BC806BD6242B6BFF98256484 /* PrivacyInfo.xcprivacy */,
 			);
 			path = Widget;
 			sourceTree = "<group>";
@@ -324,6 +342,7 @@
 			children = (
 				C10A101E749D081A993029F5 /* DecisionResult.swift */,
 				D7069ADE1D4517A68074A941 /* KnowledgeNote.swift */,
+				0AB08734FD1CC1B212623781 /* PrivateSyncPayload.swift */,
 				6B2CD3E21B3B4C11494D5E8A /* ServerHealth.swift */,
 				3A4B10FE4642391FE81849AE /* SyncSnapshot.swift */,
 				E1040BF0BCDC6B775AB8BFEB /* UserProfile.swift */,
@@ -346,6 +365,7 @@
 		C2AA20F82949400978577633 /* macOS */ = {
 			isa = PBXGroup;
 			children = (
+				55A7C5E1676627C00E5371C5 /* Assets.xcassets */,
 				18CC18E5DABD72F099F2C8C5 /* CortexOS.entitlements */,
 				2E1AEDA2C9B14B9466534033 /* Info.plist */,
 			);
@@ -355,9 +375,11 @@
 		CEB117278552FAD7A65115D5 /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				7ED83F6AB0177D62051212CE /* APIService.swift */,
-				5721E1150AE4F7C3C1920DEF /* CaptureQueue.swift */,
 				92F7EAF5E556E281CE9F848D /* CortexEngine.swift */,
+				EB672B6D9B20B07ADA5A042A /* ICloudSyncService.swift */,
+				360A21B45A35CC626FC34CB1 /* LocalPriorityEngine.swift */,
+				2FF0307566AC503D9FD0284B /* LocalSignalEngine.swift */,
+				522F604C463F303AFC8EA524 /* LocalSynthesisEngine.swift */,
 				7A2BF1090AE67AB15EDFF542 /* OfflineStore.swift */,
 				436DD48DD5D9F54BA6AD94CE /* SemanticMemoryStore.swift */,
 				8F4BACA0E270BC81467132B4 /* SnapshotCache.swift */,
@@ -435,6 +457,7 @@
 			buildConfigurationList = 5EE59409A61DB960375370F5 /* Build configuration list for PBXNativeTarget "CortexOS-Widget" */;
 			buildPhases = (
 				BBB298C6B1C8EA1DF977ECF1 /* Sources */,
+				DCBC6C7FC16AC58AF47CCFA6 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -503,7 +526,6 @@
 					};
 					478B9E8325E8EDB61C4E58F1 = {
 						DevelopmentTeam = 2V8LZ2444Y;
-						ProvisioningStyle = Automatic;
 					};
 					48566068873B85D9B4B03162 = {
 						DevelopmentTeam = 2V8LZ2444Y;
@@ -512,15 +534,12 @@
 					};
 					8876A5EE4712EFA940DFC8B5 = {
 						DevelopmentTeam = 2V8LZ2444Y;
-						ProvisioningStyle = Automatic;
 					};
 					9289113ECDE79DBEECBD7E8E = {
 						DevelopmentTeam = 2V8LZ2444Y;
-						ProvisioningStyle = Automatic;
 					};
 					EAA72848397871234B08D719 = {
 						DevelopmentTeam = 2V8LZ2444Y;
-						ProvisioningStyle = Automatic;
 					};
 				};
 			};
@@ -553,7 +572,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				DCB587E75FE3A372983B8025 /* Assets.xcassets in Resources */,
+				8E73074C678DE9E8EEA19E42 /* Assets.xcassets in Resources */,
 				222E0E5A70B362FA23B04C6D /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -562,7 +581,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				6FE7D9E9743A0465B1DE8C0D /* Assets.xcassets in Resources */,
+				064C4CF77C5C7B48EA0E6509 /* Assets.xcassets in Resources */,
 				92DEF6290F4029DA3D27AE2E /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -571,8 +590,16 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				2F1533E0941F02C7DF1279B5 /* Assets.xcassets in Resources */,
+				FE2F3DB5EB64DA8DB87225C8 /* Assets.xcassets in Resources */,
 				44BEBB96CB232D95DF6369B3 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DCBC6C7FC16AC58AF47CCFA6 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				26ACB5013EFD9F0992946DBD /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -583,12 +610,15 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5EA3FEF1B505A295927D2771 /* APIService.swift in Sources */,
-				00C0AB5D9637541E8674C38F /* CaptureQueue.swift in Sources */,
 				F42DC43965C8517A6A563BEC /* CortexWatchApp.swift in Sources */,
 				9920C38A1BF1FC96CD2D96B6 /* DecisionResult.swift in Sources */,
+				D7ACED4470EC5CDDDFBD6E2E /* ICloudSyncService.swift in Sources */,
 				5325B0BC982BBDDBE0118C93 /* KnowledgeNote.swift in Sources */,
+				1FAE05E43C772925CAC5E5CA /* LocalPriorityEngine.swift in Sources */,
+				43FC3EB054AFA68D2A959D84 /* LocalSignalEngine.swift in Sources */,
+				F5E058916C059B02C793B780 /* LocalSynthesisEngine.swift in Sources */,
 				A2DC5746E11F673269F850B8 /* OfflineStore.swift in Sources */,
+				1CA8DF3E8C910F54366CEE0A /* PrivateSyncPayload.swift in Sources */,
 				889F953825322B4806FC804D /* SemanticMemoryStore.swift in Sources */,
 				EE8E189BF25E03C6D8540A9C /* ServerHealth.swift in Sources */,
 				39E7BD66B5448644897BD5BA /* SnapshotCache.swift in Sources */,
@@ -604,8 +634,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				53AED17EEE30BD3659D1E0AF /* APIService.swift in Sources */,
-				BCE1DF7106C1F89DD454E75C /* CaptureQueue.swift in Sources */,
 				DA57948E1DA2B2430F40198D /* ConfidenceIndicator.swift in Sources */,
 				6D4A94B835D700183C584BBD /* ContentView.swift in Sources */,
 				E5AA94159D504CF0F1F0C93A /* ContextTag.swift in Sources */,
@@ -617,13 +645,18 @@
 				8B71EB9F47C122FC994FC4A4 /* DecisionResult.swift in Sources */,
 				4DDE48AC364FC596FBACC664 /* EmptyStateView.swift in Sources */,
 				65CC8228420AD80AB5441AA4 /* HistoryView.swift in Sources */,
+				FA779475AE4AEB63A9EAA176 /* ICloudSyncService.swift in Sources */,
 				D65AD24A1E24B562E3D365A7 /* InsightCard.swift in Sources */,
 				C0DE21C721526FAEA51B8059 /* InsightFeedView.swift in Sources */,
 				0366465D10533CCEDD42C164 /* KnowledgeListView.swift in Sources */,
 				BBFADD1949CF1D30AF5A1897 /* KnowledgeNote.swift in Sources */,
+				B1314C7AB50EE6AF56065EE8 /* LocalPriorityEngine.swift in Sources */,
+				DD9EF93691196F00E7FCE141 /* LocalSignalEngine.swift in Sources */,
+				FB457F72A9BDCBAA2AD8FE58 /* LocalSynthesisEngine.swift in Sources */,
 				5EB49BCCA4D82078BA878659 /* MemoryExplorerView.swift in Sources */,
 				EEE62C622A0701A7EC6A4218 /* NewsletterWorkbenchView.swift in Sources */,
 				6A1BDF098080A40FF547A5C1 /* OfflineStore.swift in Sources */,
+				C273DA54822C115F5D121C5E /* PrivateSyncPayload.swift in Sources */,
 				FEA350E145EDA5EF44589E39 /* ProfileView.swift in Sources */,
 				EAC85FABCCFF67D9FC4A6C45 /* QuickCaptureView.swift in Sources */,
 				6600B8F112708F105AAECDA6 /* SemanticMemoryStore.swift in Sources */,
@@ -669,8 +702,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				731236783EB98B9B2D6F1259 /* APIService.swift in Sources */,
-				08831958774AD3C955AB9E4C /* CaptureQueue.swift in Sources */,
 				D38499C6FDC41865988496CE /* ConfidenceIndicator.swift in Sources */,
 				1A7D64121DCB76486B6E85A6 /* ContentView.swift in Sources */,
 				326CB362105D1862F7357289 /* ContextTag.swift in Sources */,
@@ -682,13 +713,18 @@
 				7764FA1E1C3891C4F4A743ED /* DecisionResult.swift in Sources */,
 				66869F5ED2E35942CB4A865C /* EmptyStateView.swift in Sources */,
 				7EF46C33519D93888968E135 /* HistoryView.swift in Sources */,
+				4005BF0FF7898DDA9A8B65D0 /* ICloudSyncService.swift in Sources */,
 				48BBE61BA13401AF4F01EEAA /* InsightCard.swift in Sources */,
 				720927F71898C293F1268EDB /* InsightFeedView.swift in Sources */,
 				975B6974F482059BDC5B6B66 /* KnowledgeListView.swift in Sources */,
 				11706CE8AFE9F67844B19CB4 /* KnowledgeNote.swift in Sources */,
+				0948730297F480A51D70F6EA /* LocalPriorityEngine.swift in Sources */,
+				488DD7AAE3C4D3B90C8B0650 /* LocalSignalEngine.swift in Sources */,
+				8903DE6BD7B56AF86189025B /* LocalSynthesisEngine.swift in Sources */,
 				92CBE1447DDC7F3140476B3F /* MemoryExplorerView.swift in Sources */,
 				AC01035F727FEFB781BECF12 /* NewsletterWorkbenchView.swift in Sources */,
 				0D7878F94884FD5F78410E88 /* OfflineStore.swift in Sources */,
+				08E44101CB920E4384B9071A /* PrivateSyncPayload.swift in Sources */,
 				EBA7E81547BA33758E8DE7AE /* ProfileView.swift in Sources */,
 				885CAE17980EB7774400917C /* QuickCaptureView.swift in Sources */,
 				90606228EEE67BE9DAEADB50 /* SemanticMemoryStore.swift in Sources */,
@@ -766,7 +802,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 20260716092238;
+				CURRENT_PROJECT_VERSION = 20260809002904;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = 2V8LZ2444Y;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -787,11 +823,15 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.1.12;
+				MARKETING_VERSION = 1.9.2;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SIMPLIXIO_IOS_PROFILE = "";
+				SIMPLIXIO_MAC_PROFILE = "";
+				SIMPLIXIO_WATCH_PROFILE = "";
+				SIMPLIXIO_WIDGET_PROFILE = "";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.9;
@@ -802,8 +842,9 @@
 		1DBC5D2093F456D8614DEBB8 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = WatchAppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "watchOS/CortexOS-watchOS.entitlements";
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = watchOS/Info.plist;
@@ -819,7 +860,7 @@
 		1FCA20945124E64A6FC616C8 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = iOSAppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "iOS/CortexOS-iOS.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
@@ -897,6 +938,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = "Widget/CortexOS-Widget.entitlements";
+				CODE_SIGN_IDENTITY = "Apple Distribution";
+				CODE_SIGN_STYLE = Manual;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Widget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "SimpliXio Focus";
@@ -908,6 +951,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = me.ph7.cortexos.ios.widget;
 				PRODUCT_NAME = "CortexOS-Widget";
+				PROVISIONING_PROFILE_SPECIFIER = "$(SIMPLIXIO_WIDGET_PROFILE)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -950,7 +994,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 20260716092238;
+				CURRENT_PROJECT_VERSION = 20260809002904;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 2V8LZ2444Y;
 				ENABLE_NS_ASSERTIONS = NO;
@@ -965,10 +1009,14 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.1.12;
+				MARKETING_VERSION = 1.9.2;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SIMPLIXIO_IOS_PROFILE = "";
+				SIMPLIXIO_MAC_PROFILE = "";
+				SIMPLIXIO_WATCH_PROFILE = "";
+				SIMPLIXIO_WIDGET_PROFILE = "";
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.9;
@@ -979,7 +1027,7 @@
 		BCB233F64B04AB96E8314013 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = MacAppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = macOS/CortexOS.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -1001,9 +1049,11 @@
 		C8D00E196F23FC26ED1C4EB8 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = MacAppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = macOS/CortexOS.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Distribution";
+				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -1016,6 +1066,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = me.ph7.cortexos.macos;
 				PRODUCT_NAME = SimpliXio;
+				PROVISIONING_PROFILE_SPECIFIER = "$(SIMPLIXIO_MAC_PROFILE)";
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
 			};
@@ -1064,10 +1115,11 @@
 		E20170A36A5C07A76B802C2B /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = iOSAppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "iOS/CortexOS-iOS.entitlements";
-				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_IDENTITY = "Apple Distribution";
+				CODE_SIGN_STYLE = Manual;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = iOS/Info.plist;
@@ -1078,6 +1130,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = me.ph7.cortexos.ios;
 				PRODUCT_NAME = SimpliXio;
+				PROVISIONING_PROFILE_SPECIFIER = "$(SIMPLIXIO_IOS_PROFILE)";
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_COMPILATION_MODE = wholemodule;
@@ -1088,13 +1141,17 @@
 		E55CA59E5483B1D86C738F37 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = WatchAppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "watchOS/CortexOS-watchOS.entitlements";
+				CODE_SIGN_IDENTITY = "Apple Distribution";
+				CODE_SIGN_STYLE = Manual;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = watchOS/Info.plist;
 				PRODUCT_BUNDLE_IDENTIFIER = me.ph7.cortexos.ios.watchos;
 				PRODUCT_NAME = "SimpliXio Watch";
+				PROVISIONING_PROFILE_SPECIFIER = "$(SIMPLIXIO_WATCH_PROFILE)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;

@@ -19,9 +19,9 @@ struct WeeklyReviewView: View {
             } else {
                 EmptyStateView(
                     icon: "calendar.badge.clock",
-                    title: "Weekly review not ready",
-                    message: "Not enough decision history yet. Sync after more daily activity.",
-                    actionTitle: "Sync",
+                    title: "Your weekly review will appear here",
+                    message: "Capture a few thoughts or decisions during the week. SimpliXio will summarize what repeated and what deserves focus next.",
+                    actionTitle: "Refresh",
                     action: { Task { await engine.sync() } },
                     isActionLoading: engine.isSyncing
                 )

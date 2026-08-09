@@ -2,8 +2,8 @@
 //  SyncSnapshot.swift
 //  CortexOS
 //
-//  Single-call sync model — everything a client needs in one pull.
-//  Backend is source of truth. Clients decode this on launch.
+//  Derived product snapshot. Apple apps build it on-device; optional developer
+//  tooling can also encode and decode the same public model.
 //
 
 import Foundation
@@ -205,7 +205,7 @@ struct SyncSignalMatchingCounts: Codable {
     }
 }
 
-// MARK: - Newsletter (automation-backed, optional)
+// MARK: - Newsletter
 
 struct SyncNewsletterSafetyReport: Codable {
     let safeToPublish: Bool?
@@ -255,6 +255,53 @@ struct SyncNewsletter: Codable {
     }
 }
 
+extension SyncNewsletter {
+    var passesAutomatedPublicationChecks: Bool {
+        safetyReport?.safeToPublish == true &&
+            tasteGate?.passed == true &&
+            !markdownPath.isEmpty
+    }
+
+    var isEligibleForApproval: Bool {
+        status == "needs_review" &&
+            !safeToPublish &&
+            passesAutomatedPublicationChecks
+    }
+
+    var isApprovedForSharing: Bool {
+        status == "approved" &&
+            safeToPublish &&
+            passesAutomatedPublicationChecks
+    }
+
+    func withPublicationStatus(
+        status: String,
+        safeToPublish: Bool,
+        recommendation: String
+    ) -> SyncNewsletter {
+        SyncNewsletter(
+            status: status,
+            mode: mode,
+            periodStart: periodStart,
+            periodEnd: periodEnd,
+            safeToPublish: safeToPublish,
+            generatedAt: generatedAt,
+            title: title,
+            subtitle: subtitle,
+            preview: preview,
+            sourceCountTotal: sourceCountTotal,
+            sourceCountUsable: sourceCountUsable,
+            safetyReport: SyncNewsletterSafetyReport(
+                safeToPublish: safetyReport?.safeToPublish,
+                remainingConcerns: safetyReport?.remainingConcerns,
+                recommendation: recommendation
+            ),
+            tasteGate: tasteGate,
+            markdownPath: markdownPath
+        )
+    }
+}
+
 struct NewsletterGenerateRequest: Codable {
     let period: String
     let mode: String
@@ -281,7 +328,7 @@ struct NewsletterGenerationResult: Codable {
     }
 }
 
-// MARK: - Decision Replay (backend-computed)
+// MARK: - Decision Replay
 
 struct SyncDecisionReplaySignal: Codable, Identifiable {
     var id: String { "\(title)-\(reason)" }
@@ -319,7 +366,7 @@ struct SyncDecisionReplay: Codable {
     }
 }
 
-// MARK: - Today Output (canonical backend share payload)
+// MARK: - Today Output
 
 struct SyncTodayPriority: Codable, Identifiable {
     var id: String { "\(rank)-\(title)" }
@@ -346,7 +393,7 @@ struct SyncTodayOutput: Codable {
     }
 }
 
-// MARK: - Weekly Review (backend-computed)
+// MARK: - Weekly Review
 
 struct SyncWeeklyReviewCountItem: Codable, Identifiable {
     var id: String { title }

@@ -22,5 +22,7 @@
 	<false/>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.productivity</string>
+	<key>SimpliXioKeychainAccessGroup</key>
+	<string>$(AppIdentifierPrefix)me.ph7.cortexos.shared</string>
 </dict>
 </plist>

@@ -19,9 +19,9 @@ struct DecisionReplayView: View {
             } else {
                 EmptyStateView(
                     icon: "arrow.triangle.branch",
-                    title: "Decision Replay not ready",
-                    message: "Not enough decision history yet. Sync after more activity.",
-                    actionTitle: "Sync",
+                    title: "Your Decision Replay will appear here",
+                    message: "Capture a few signals first. SimpliXio will show what it kept, what it ignored, and why.",
+                    actionTitle: "Refresh",
                     action: { Task { await engine.sync() } },
                     isActionLoading: engine.isSyncing
                 )

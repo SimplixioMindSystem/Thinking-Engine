@@ -1,30 +1,16 @@
-//
-//  SettingsView.swift
-//  CortexOS
-//
-//  Minimal settings. Connection, identity, about.
-//  No dashboard metrics. No developer tools exposed.
-//
-
 import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject private var engine: CortexEngine
-    @State private var serverURL: String = ""
-    @State private var connectionFeedback: ConnectionFeedback?
-    @State private var isTesting = false
-    @State private var isPreparingDemo = false
-    @State private var isRetryingQueue = false
-    @State private var showQueueSheet = false
+    @State private var isPreparingPreview = false
 
-    @AppStorage("cortex_system_name") private var systemName: String = "SimpliXio"
-    @AppStorage("cortex_demo_mode_enabled") private var demoModeEnabled: Bool = true
+    @AppStorage("cortex_demo_mode_enabled") private var demoModeEnabled = false
 
-    private let projectURL = URL(string: "https://github.com/SimplixioMindSystem/Thinking-Engine")!
-    private let orgURL = URL(string: "https://github.com/SimplixioMindSystem")!
-    private let authorWebsiteURL = URL(string: "https://pierrehenry.dev")!
-    private let authorGitHubURL = URL(string: "https://github.com/pH-7")!
-    private let authorLinkedInURL = URL(string: "https://www.linkedin.com/in/ph7enry/")!
+    private let projectURL = URL(string: "https://github.com/SimplixioMindSystem/Thinking-Engine")
+    private let orgURL = URL(string: "https://github.com/SimplixioMindSystem")
+    private let authorWebsiteURL = URL(string: "https://pierrehenry.dev")
+    private let authorGitHubURL = URL(string: "https://github.com/pH-7")
+    private let authorLinkedInURL = URL(string: "https://www.linkedin.com/in/ph7enry/")
     private var appVersionDisplay: String { Bundle.main.versionWithBuild }
 
     var body: some View {
@@ -37,43 +23,33 @@ struct SettingsView: View {
         }
         .navigationTitle("Settings")
         .task {
-            serverURL = engine.api.baseURL
-            await engine.checkConnection()
-            await engine.refreshPendingSyncActions()
             engine.resumeSemanticIndexing()
             await engine.refreshSemanticIndexStatus()
             demoModeEnabled = engine.demoModeEnabled
         }
-        .sheet(isPresented: $showQueueSheet) { queueSheet }
         .accessibilityIdentifier("settings.screen")
     }
 
-    // MARK: - iOS layout
-
     private var iOSSettingsBody: some View {
         Form {
-            connectionSection
+            syncSection
             trustSection
             semanticMemorySection
-            identitySection
             aboutSection
-            demoSection
+            previewSection
             projectSection
             authorSection
         }
     }
 
-    // MARK: - macOS layout
-
     private var macSettingsBody: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: CortexSpacing.lg) {
-                settingsCard("Sync") { connectionSectionBody }
+                settingsCard("Private iCloud Sync") { syncSectionBody }
                 settingsCard("Privacy & Trust") { trustSectionBody }
-                settingsCard("On-device Memory") { semanticMemorySectionBody }
-                settingsCard("Identity") { identitySectionBody }
+                settingsCard("On-device Search") { semanticMemorySectionBody }
                 settingsCard("About") { aboutSectionBody }
-                settingsCard("Preview Content") { demoSectionBody }
+                settingsCard("Preview Content") { previewSectionBody }
                 settingsCard("Project") { projectSectionBody }
                 settingsCard("Author") { authorSectionBody }
             }
@@ -84,134 +60,114 @@ struct SettingsView: View {
         .background(CortexColor.bgPrimary)
     }
 
-    // MARK: - Shared sections
-
-    private var connectionSection: some View {
-        Section { connectionSectionBody } header: { Text("Sync") }
+    private var syncSection: some View {
+        Section("Private iCloud Sync") { syncSectionBody }
     }
 
     @ViewBuilder
-    private var connectionSectionBody: some View {
-        HStack(spacing: CortexSpacing.sm) {
-            Circle()
-                .fill(statusColor)
-                .frame(width: 8, height: 8)
-            Text(statusLabel)
-                .font(CortexFont.body)
-                .foregroundStyle(CortexColor.textPrimary)
-            Spacer()
-        }
-
-        DisclosureGroup("Server endpoint") {
-            VStack(alignment: .leading, spacing: CortexSpacing.xs) {
-                Text("Server URL")
-                    .cortexFieldLabel()
-                TextField("https://api.example.com", text: $serverURL)
-                    #if os(iOS)
-                    .keyboardType(.URL)
-                    .textInputAutocapitalization(.never)
-                    #endif
-                    .textFieldStyle(.plain)
-                    .cortexInputSurface()
-                    .onChange(of: serverURL) { _, newValue in
-                        engine.api.baseURL = newValue
+    private var syncSectionBody: some View {
+        if !engine.demoModeEnabled {
+            Toggle(
+                "Sync across Apple devices",
+                isOn: Binding(
+                    get: { engine.iCloudSyncEnabled },
+                    set: { enabled in
+                        Task { await engine.setICloudSync(enabled: enabled) }
                     }
-            }
-
-            Text("Leave empty to run locally. Captures stay on-device and can sync after you add a server.")
-                .font(CortexFont.caption)
-                .foregroundStyle(CortexColor.textTertiary)
-
-            connectionActions
-        }
-
-        if engine.pendingSyncActions > 0 {
-            Button {
-                showQueueSheet = true
-            } label: {
-                HStack {
-                    Label("Waiting to sync", systemImage: "tray.and.arrow.up")
-                        .font(CortexFont.caption)
-                        .foregroundStyle(CortexColor.textSecondary)
-                    Spacer()
-                    Text("\(engine.pendingSyncActions)")
-                        .font(CortexFont.captionMedium)
-                        .foregroundStyle(CortexColor.accent)
-                    Image(systemName: "chevron.right")
-                        .font(.caption2)
-                        .foregroundStyle(CortexColor.textTertiary)
-                }
-            }
-            .buttonStyle(.plain)
-        }
-    }
-
-    private var identitySection: some View {
-        Section {
-            identitySectionBody
-        } header: {
-            Text("Identity")
-        }
-    }
-
-    @ViewBuilder
-    private var identitySectionBody: some View {
-        VStack(alignment: .leading, spacing: CortexSpacing.xs) {
-            Text("Display Name")
-                .cortexFieldLabel()
-            TextField("Name", text: $systemName)
-                .textFieldStyle(.plain)
-                .cortexInputSurface()
-        }
-    }
-
-    private var demoSection: some View {
-        Section {
-            demoSectionBody
-        } header: {
-            Text("Preview Content")
-        }
-    }
-
-    @ViewBuilder
-    private var demoSectionBody: some View {
-        Toggle("Show preview content", isOn: $demoModeEnabled)
+                )
+            )
             .font(CortexFont.bodyMedium)
-            .onChange(of: demoModeEnabled) { _, enabled in
-                Task {
-                    isPreparingDemo = true
-                    await engine.setDemoMode(enabled: enabled)
-                    isPreparingDemo = false
-                }
-            }
+        }
 
-        Button {
-            Task {
-                isPreparingDemo = true
-                await engine.populateDemoContent()
-                isPreparingDemo = false
+        HStack(alignment: .top, spacing: CortexSpacing.sm) {
+            Image(systemName: syncStatusIcon)
+                .foregroundStyle(syncStatusColor)
+                .frame(width: 20)
+            VStack(alignment: .leading, spacing: CortexSpacing.xxs) {
+                Text(syncStatusTitle)
+                    .font(CortexFont.bodyMedium)
+                    .foregroundStyle(CortexColor.textPrimary)
+                Text(syncStatusDetail)
+                    .font(CortexFont.caption)
+                    .foregroundStyle(CortexColor.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-        } label: {
-            HStack(spacing: CortexSpacing.xs) {
-                Text("Load preview priorities")
-                if isPreparingDemo {
-                    ProgressView()
-                        .controlSize(.small)
-                }
+            Spacer(minLength: 0)
+            if engine.isSyncing {
+                ProgressView().controlSize(.small)
             }
         }
-        .buttonStyle(CortexSecondaryButtonStyle())
-        .disabled(isPreparingDemo)
 
-        Text("Use clearly marked preview content to understand the product before your own captures build up.")
+        if !engine.demoModeEnabled {
+            Button {
+                Task { await engine.sync() }
+            } label: {
+                Label(engine.isSyncing ? "Syncing…" : "Sync now", systemImage: "arrow.triangle.2.circlepath")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(CortexSecondaryButtonStyle(fullWidth: true))
+            .disabled(engine.isSyncing || !engine.iCloudSyncEnabled)
+        }
+
+        Text(syncExplanation)
             .font(CortexFont.caption)
             .foregroundStyle(CortexColor.textTertiary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
 
-        if let status = engine.lastSyncStatus, !status.isEmpty {
-            Text(status)
-                .font(CortexFont.caption)
-                .foregroundStyle(CortexColor.accent)
+    private var trustSection: some View {
+        Section("Privacy & Trust") { trustSectionBody }
+    }
+
+    @ViewBuilder
+    private var trustSectionBody: some View {
+        VStack(alignment: .leading, spacing: CortexSpacing.sm) {
+            trustRow("Captures, priorities, reviews, and search are processed on-device.")
+            trustRow("Private sync encrypts captures before iCloud; no SimpliXio or third-party app server receives readable content.")
+            trustRow("Newsletter drafts are redacted locally and never published automatically.")
+            trustRow("Every priority shows why it surfaced and the next action it suggests.")
+            trustRow("Your useful, skipped, and done feedback improves future ranking.")
+            trustRow("You stay in control of every decision and public export.")
         }
+        .padding(.vertical, CortexSpacing.xxs)
+    }
+
+    private var semanticMemorySection: some View {
+        Section("On-device Search") { semanticMemorySectionBody }
+    }
+
+    @ViewBuilder
+    private var semanticMemorySectionBody: some View {
+        HStack(spacing: CortexSpacing.sm) {
+            Image(systemName: semanticStatusIcon)
+                .foregroundStyle(semanticStatusColor)
+            VStack(alignment: .leading, spacing: CortexSpacing.xxs) {
+                Text("Private semantic search")
+                    .font(CortexFont.bodyMedium)
+                    .foregroundStyle(CortexColor.textPrimary)
+                Text(semanticIndexLabel)
+                    .font(CortexFont.caption)
+                    .foregroundStyle(semanticStatusColor)
+            }
+            Spacer()
+            if engine.isRebuildingSemanticIndex || semanticIndexIsPreparing {
+                ProgressView().controlSize(.small)
+            }
+        }
+
+        Button {
+            Task { await engine.rebuildSemanticIndex() }
+        } label: {
+            Label("Refresh private search", systemImage: "sparkle.magnifyingglass")
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(CortexSecondaryButtonStyle(fullWidth: true))
+        .disabled(engine.isRebuildingSemanticIndex || engine.semanticIndexStatus?.isAvailable != true)
+
+        Text("The search index stays on this device. Search never sends note text to an external model.")
+            .font(CortexFont.caption)
+            .foregroundStyle(CortexColor.textTertiary)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private var aboutSection: some View {
@@ -221,8 +177,36 @@ struct SettingsView: View {
     @ViewBuilder
     private var aboutSectionBody: some View {
         LabeledContent("App", value: "SimpliXio")
-        LabeledContent("Purpose", value: "Turn noise into 3 priorities and one next action.")
+        LabeledContent("Promise", value: "3 priorities. Why. Action.")
         LabeledContent("Version", value: appVersionDisplay)
+    }
+
+    private var previewSection: some View {
+        Section("Preview Content") { previewSectionBody }
+    }
+
+    @ViewBuilder
+    private var previewSectionBody: some View {
+        Toggle("Show clearly marked preview content", isOn: $demoModeEnabled)
+            .font(CortexFont.bodyMedium)
+            .disabled(isPreparingPreview)
+            .onChange(of: demoModeEnabled) { _, enabled in
+                Task {
+                    isPreparingPreview = true
+                    await engine.setDemoMode(enabled: enabled)
+                    isPreparingPreview = false
+                }
+            }
+
+        if isPreparingPreview {
+            ProgressView("Preparing preview…")
+                .controlSize(.small)
+        }
+
+        Text("Preview content is optional, stays on this device, and never replaces your own captures.")
+            .font(CortexFont.caption)
+            .foregroundStyle(CortexColor.textTertiary)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private var projectSection: some View {
@@ -231,25 +215,21 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var projectSectionBody: some View {
-        ShareLink(item: projectURL) {
-            HStack(spacing: CortexSpacing.sm) {
-                Image(systemName: "square.and.arrow.up.fill")
-                    .imageScale(.medium)
-                    .foregroundStyle(CortexColor.accentForeground)
-                Text("Share Project")
-                    .font(CortexFont.bodyMedium.weight(.semibold))
-                    .foregroundStyle(CortexColor.accentForeground)
+        if let projectURL {
+            ShareLink(item: projectURL) {
+                Label("Share Project", systemImage: "square.and.arrow.up.fill")
+                    .frame(maxWidth: .infinity)
             }
-            .frame(maxWidth: .infinity, alignment: .center)
-        }
-        .buttonStyle(CortexPrimaryButtonStyle(fullWidth: true))
+            .buttonStyle(CortexPrimaryButtonStyle(fullWidth: true))
 
-        Link(destination: projectURL) {
-            settingsLinkRow(icon: "shippingbox.fill", title: "Repository", value: "Thinking-Engine")
+            Link(destination: projectURL) {
+                settingsLinkRow(icon: "shippingbox.fill", title: "Repository", value: "SimpliXio")
+            }
         }
-
-        Link(destination: orgURL) {
-            settingsLinkRow(icon: "building.2.fill", title: "Organization", value: "SimplixioMindSystem")
+        if let orgURL {
+            Link(destination: orgURL) {
+                settingsLinkRow(icon: "building.2.fill", title: "Organization", value: "SimplixioMindSystem")
+            }
         }
     }
 
@@ -263,86 +243,81 @@ struct SettingsView: View {
             Image(systemName: "person.crop.circle.fill")
                 .font(.title2)
                 .foregroundStyle(CortexColor.accent)
-
             VStack(alignment: .leading, spacing: CortexSpacing.xxs) {
                 Text("Pierre-Henry Soria")
                     .font(CortexFont.bodyMedium)
                     .foregroundStyle(CortexColor.textPrimary)
-
                 Text("I build calm tools that turn noise into clearer decisions and action.")
                     .font(CortexFont.caption)
                     .foregroundStyle(CortexColor.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-
-        Link(destination: authorWebsiteURL) {
-            settingsLinkRow(icon: "globe", title: "Website", value: "pierrehenry.dev")
+        if let authorWebsiteURL {
+            Link(destination: authorWebsiteURL) {
+                settingsLinkRow(icon: "globe", title: "Website", value: "pierrehenry.dev")
+            }
         }
-
-        Link(destination: authorGitHubURL) {
-            settingsLinkRow(icon: "chevron.left.forwardslash.chevron.right", title: "GitHub", value: "pH-7")
+        if let authorGitHubURL {
+            Link(destination: authorGitHubURL) {
+                settingsLinkRow(icon: "chevron.left.forwardslash.chevron.right", title: "GitHub", value: "pH-7")
+            }
         }
-
-        Link(destination: authorLinkedInURL) {
-            settingsLinkRow(icon: "person.crop.square", title: "LinkedIn", value: "ph7enry")
+        if let authorLinkedInURL {
+            Link(destination: authorLinkedInURL) {
+                settingsLinkRow(icon: "person.crop.square", title: "LinkedIn", value: "ph7enry")
+            }
         }
     }
 
-    private var semanticMemorySection: some View {
-        Section("On-device Memory") { semanticMemorySectionBody }
+    private var syncStatusTitle: String {
+        if engine.demoModeEnabled { return "Preview stays on this device" }
+        switch engine.iCloudSyncState {
+        case .disabled: return "On this device only"
+        case .synced: return "Private iCloud sync active"
+        case .localOnly: return "Saved locally"
+        case .waitingForKey: return "Waiting for private sync key"
+        case .storageFull: return "iCloud sync storage is full"
+        case .failed: return "iCloud is temporarily unavailable"
+        }
     }
 
-    @ViewBuilder
-    private var semanticMemorySectionBody: some View {
-        HStack(spacing: CortexSpacing.sm) {
-            Image(systemName: semanticStatusIcon)
-                .foregroundStyle(semanticStatusColor)
-
-            VStack(alignment: .leading, spacing: CortexSpacing.xxs) {
-                Text("Semantic search")
-                    .font(CortexFont.bodyMedium)
-                    .foregroundStyle(CortexColor.textPrimary)
-                Text(semanticIndexLabel)
-                    .font(CortexFont.caption)
-                    .foregroundStyle(semanticStatusColor)
-            }
-
-            Spacer()
-            if engine.isRebuildingSemanticIndex || semanticIndexIsPreparing {
-                ProgressView()
-                    .controlSize(.small)
-            }
+    private var syncStatusDetail: String {
+        if engine.demoModeEnabled {
+            return "Sample content never enters private iCloud sync. Turn off Preview Content to use your own synced captures."
         }
+        if let status = engine.lastSyncStatus, !status.isEmpty { return status }
+        return engine.iCloudSyncEnabled
+            ? "Your private state syncs between iPhone, Mac, and Apple Watch."
+            : "Your captures remain available on this device."
+    }
 
-        if let status = engine.semanticIndexStatus, status.isAvailable {
-            LabeledContent("Model", value: "Apple Natural Language · \(status.dimension)D")
-                .font(CortexFont.caption)
-
-            if status.storageBytes > 0 {
-                LabeledContent("Local index", value: semanticStorageLabel(status.storageBytes))
-                    .font(CortexFont.caption)
-            }
+    private var syncStatusIcon: String {
+        if engine.demoModeEnabled { return "eye" }
+        switch engine.iCloudSyncState {
+        case .disabled: return "internaldrive"
+        case .synced: return "checkmark.icloud.fill"
+        case .localOnly: return "icloud.slash"
+        case .waitingForKey: return "key.icloud"
+        case .storageFull: return "externaldrive.badge.exclamationmark"
+        case .failed: return "exclamationmark.icloud"
         }
+    }
 
-        Button {
-            Task { await engine.rebuildSemanticIndex() }
-        } label: {
-            HStack(spacing: CortexSpacing.xs) {
-                Text("Rebuild local index")
-                if engine.isRebuildingSemanticIndex {
-                    ProgressView()
-                        .controlSize(.small)
-                }
-            }
+    private var syncStatusColor: Color {
+        if engine.demoModeEnabled { return CortexColor.textSecondary }
+        switch engine.iCloudSyncState {
+        case .synced: return CortexColor.success
+        case .storageFull, .failed: return CortexColor.warning
+        case .disabled, .localOnly, .waitingForKey: return CortexColor.textSecondary
         }
-        .buttonStyle(CortexSecondaryButtonStyle())
-        .disabled(engine.isRebuildingSemanticIndex || engine.semanticIndexStatus?.isAvailable != true)
+    }
 
-        Text("Search embeddings stay on this device. A server is not required, and the rebuildable index is excluded from backups.")
-            .font(CortexFont.caption)
-            .foregroundStyle(CortexColor.textTertiary)
-            .fixedSize(horizontal: false, vertical: true)
+    private var syncExplanation: String {
+        if engine.demoModeEnabled {
+            return "Preview content is isolated from private iCloud sync. Your own captures can sync after Preview Content is turned off."
+        }
+        return "Changes save on this device first. If iCloud is unavailable, nothing is lost and sync retries later."
     }
 
     private var semanticIndexIsPreparing: Bool {
@@ -351,47 +326,25 @@ struct SettingsView: View {
     }
 
     private var semanticIndexLabel: String {
-        guard let status = engine.semanticIndexStatus else { return "Preparing local index…" }
-        guard status.isAvailable else { return "Sentence embeddings unavailable" }
-        guard status.isPersistent else { return "Using temporary in-memory search" }
+        guard let status = engine.semanticIndexStatus else { return "Preparing private search…" }
+        guard status.isAvailable else { return "Unavailable on this device" }
+        guard status.isPersistent else { return "Ready for this session" }
         if status.indexedNotes < status.totalNotes {
-            return "Indexing \(status.indexedNotes) of \(status.totalNotes) notes"
+            return "Updating \(status.indexedNotes) of \(status.totalNotes) captures"
         }
-        return status.totalNotes == 1 ? "Ready · 1 note" : "Ready · \(status.totalNotes) notes"
+        return status.totalNotes == 1 ? "Ready for 1 capture" : "Ready for \(status.totalNotes) captures"
     }
 
     private var semanticStatusIcon: String {
-        guard let status = engine.semanticIndexStatus else { return "brain.head.profile" }
-        return status.isReady ? "checkmark.circle.fill" : "brain.head.profile"
+        guard let status = engine.semanticIndexStatus else { return "magnifyingglass.circle" }
+        return status.isReady ? "checkmark.circle.fill" : "magnifyingglass.circle"
     }
 
     private var semanticStatusColor: Color {
         guard let status = engine.semanticIndexStatus else { return CortexColor.neutral }
         if status.isReady { return CortexColor.success }
-        if !status.isAvailable || !status.isPersistent { return CortexColor.error }
+        if !status.isAvailable || !status.isPersistent { return CortexColor.warning }
         return CortexColor.accent
-    }
-
-    private func semanticStorageLabel(_ bytes: Int64) -> String {
-        ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
-    }
-
-    private var trustSection: some View {
-        Section("Privacy & Trust") { trustSectionBody }
-    }
-
-    @ViewBuilder
-    private var trustSectionBody: some View {
-        VStack(alignment: .leading, spacing: CortexSpacing.xs) {
-            trustRow("Semantic search embeddings remain on this device.")
-            trustRow("When configured, source content syncs to the server endpoint shown above.")
-            trustRow("Leave the server endpoint empty for a local-only workflow.")
-            trustRow("Public content is redacted before export.")
-            trustRow("No autopublish for sensitive content.")
-            trustRow("Private outreach requires approval.")
-            trustRow("You stay in control of final decisions.")
-        }
-        .padding(.vertical, CortexSpacing.xxs)
     }
 
     @ViewBuilder
@@ -432,217 +385,6 @@ struct SettingsView: View {
             Image(systemName: "arrow.up.right")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-        }
-    }
-
-    private func testConnection() async {
-        isTesting = true
-        connectionFeedback = nil
-        defer { isTesting = false }
-
-        await engine.checkConnection()
-        if engine.api.isOffline {
-            connectionFeedback = .local
-        } else {
-            connectionFeedback = engine.isConnected ? .success : .failure
-        }
-    }
-
-    private var statusLabel: String {
-        if engine.api.isOffline { return "Local Offline Mode" }
-        return engine.isConnected ? "Connected" : "Offline"
-    }
-
-    private var statusColor: Color {
-        if engine.api.isOffline { return CortexColor.neutral }
-        return engine.isConnected ? CortexColor.success : CortexColor.error
-    }
-
-    private var queueSheet: some View {
-        NavigationStack {
-            List {
-                Section("Waiting to sync") {
-                    LabeledContent("Notes", value: "\(engine.pendingNotes)")
-                    LabeledContent("Decisions", value: "\(engine.pendingDecisions)")
-                    LabeledContent("Feedback", value: "\(engine.pendingFeedback)")
-                    LabeledContent("Total", value: "\(engine.pendingSyncActions)")
-                }
-
-                Section("Captured offline") {
-                    if engine.queuedActions.isEmpty {
-                        Text("Everything is synced.")
-                            .font(CortexFont.caption)
-                            .foregroundStyle(CortexColor.textTertiary)
-                    } else {
-                        ForEach(engine.queuedActions) { item in
-                            VStack(alignment: .leading, spacing: CortexSpacing.xxs) {
-                                HStack {
-                                    Text(item.kind)
-                                        .font(CortexFont.captionMedium)
-                                        .foregroundStyle(CortexColor.accent)
-                                    Spacer()
-                                    Text(item.capturedAt, style: .relative)
-                                        .font(CortexFont.caption)
-                                        .foregroundStyle(CortexColor.textTertiary)
-                                }
-                                Text(item.title)
-                                    .font(CortexFont.caption)
-                                    .foregroundStyle(CortexColor.textPrimary)
-                                    .lineLimit(2)
-                            }
-                            .padding(.vertical, CortexSpacing.xxs)
-                        }
-                    }
-                }
-            }
-            .navigationTitle("Offline Captures")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { showQueueSheet = false }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button {
-                        Task {
-                            isRetryingQueue = true
-                            await engine.retryPendingSyncActions()
-                            isRetryingQueue = false
-                        }
-                    } label: {
-                        if isRetryingQueue {
-                            ProgressView()
-                        } else {
-                            Text("Sync now")
-                        }
-                    }
-                    .buttonStyle(CortexPrimaryButtonStyle())
-                    .disabled(isRetryingQueue)
-                }
-            }
-            .task {
-                await engine.refreshPendingSyncActions()
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var connectionActions: some View {
-        #if os(iOS)
-        VStack(alignment: .leading, spacing: CortexSpacing.sm) {
-            Button {
-                Task { await testConnection() }
-            } label: {
-                HStack(spacing: CortexSpacing.xs) {
-                    Text("Test connection")
-                    if isTesting {
-                        ProgressView()
-                            .controlSize(.small)
-                    }
-                }
-                .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(CortexSecondaryButtonStyle(fullWidth: true))
-            .disabled(isTesting)
-
-            Button {
-                Task { await engine.sync() }
-            } label: {
-                HStack(spacing: CortexSpacing.xs) {
-                    if engine.isSyncing {
-                        ProgressView()
-                            .controlSize(.small)
-                    }
-                    Text(engine.isSyncing ? "Syncing…" : "Sync now")
-                }
-                .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(CortexPrimaryButtonStyle(fullWidth: true))
-            .disabled(engine.isSyncing)
-            .onChange(of: engine.isSyncing) { _, syncing in
-                if syncing {
-                    connectionFeedback = .syncing
-                } else if engine.api.isOffline {
-                    connectionFeedback = .local
-                } else {
-                    connectionFeedback = engine.isConnected ? .success : .failure
-                }
-            }
-
-            if let feedback = connectionFeedback {
-                Text(feedback.message)
-                    .font(CortexFont.caption)
-                    .foregroundStyle(feedback.color)
-            }
-        }
-        #else
-        HStack {
-            Button {
-                Task { await testConnection() }
-            } label: {
-                HStack(spacing: CortexSpacing.xs) {
-                    Text("Test")
-                    if isTesting {
-                        ProgressView()
-                            .controlSize(.small)
-                    }
-                }
-            }
-            .buttonStyle(CortexSecondaryButtonStyle())
-            .disabled(isTesting)
-
-            Button {
-                Task { await engine.sync() }
-            } label: {
-                if engine.isSyncing {
-                    ProgressView()
-                        .controlSize(.small)
-                } else {
-                    Text("Sync now")
-                }
-            }
-            .buttonStyle(CortexPrimaryButtonStyle())
-            .disabled(engine.isSyncing)
-            .onChange(of: engine.isSyncing) { _, syncing in
-                if syncing {
-                    connectionFeedback = .syncing
-                } else if engine.api.isOffline {
-                    connectionFeedback = .local
-                } else {
-                    connectionFeedback = engine.isConnected ? .success : .failure
-                }
-            }
-
-            Spacer()
-
-            if let feedback = connectionFeedback {
-                Text(feedback.message)
-                    .font(CortexFont.caption)
-                    .foregroundStyle(feedback.color)
-            }
-        }
-        #endif
-    }
-}
-
-// MARK: - Supporting Types
-
-private enum ConnectionFeedback {
-    case success, failure, local, syncing
-
-    var message: String {
-        switch self {
-        case .success: "Connected"
-        case .failure: "Unable to connect"
-        case .local: "Local mode active"
-        case .syncing: "Sync started…"
-        }
-    }
-
-    var color: Color {
-        switch self {
-        case .success: CortexColor.success
-        case .failure: CortexColor.error
-        case .local: CortexColor.neutral
-        case .syncing: CortexColor.textSecondary
         }
     }
 }

@@ -6,6 +6,9 @@ struct NewsletterWorkbenchView: View {
     @State private var selectedSource: SourcePreset = .last7Days
     @State private var selectedMode: DraftMode = .weeklyLessons
     @State private var isGeneratingDraft = false
+    @State private var isUpdatingApproval = false
+    @State private var draftMarkdown = ""
+    @State private var hasReviewedDraft = false
 
     var body: some View {
         ScrollView {
@@ -16,6 +19,7 @@ struct NewsletterWorkbenchView: View {
                 safetyCard
                 sourceQualityCard
                 previewCard
+                reviewCard
                 actions
             }
             .padding(CortexSpacing.xl)
@@ -23,6 +27,10 @@ struct NewsletterWorkbenchView: View {
         }
         .background(CortexColor.bgPrimary)
         .navigationTitle("Newsletter")
+        .task(id: engine.snapshot?.newsletter?.generatedAt) {
+            loadDraftForReview()
+            hasReviewedDraft = false
+        }
     }
 
     private var header: some View {
@@ -52,15 +60,22 @@ struct NewsletterWorkbenchView: View {
 
     @ViewBuilder
     private var newsletterTrustPills: some View {
+        if engine.demoModeEnabled {
+            statusPill(
+                label: "Preview content",
+                systemImage: "eye",
+                color: CortexColor.warning
+            )
+        }
         statusPill(
             label: "Private by default",
             systemImage: "lock.fill",
             color: CortexColor.textSecondary
         )
         statusPill(
-            label: "Redaction required",
+            label: "On-device redaction",
             systemImage: "shield.lefthalf.filled",
-            color: CortexColor.warning
+            color: CortexColor.accent
         )
         statusPill(
             label: "Manual publish only",
@@ -97,11 +112,9 @@ struct NewsletterWorkbenchView: View {
                 .font(CortexFont.caption)
                 .foregroundStyle(CortexColor.textSecondary)
 
-            if engine.api.isOffline {
-                Label("Newsletter drafting needs a server connection. Captures still stay private locally.", systemImage: "wifi.slash")
-                    .font(CortexFont.caption)
-                    .foregroundStyle(CortexColor.warning)
-            }
+            Label("Drafting and safety checks run on this device.", systemImage: "cpu")
+                .font(CortexFont.caption)
+                .foregroundStyle(CortexColor.textSecondary)
         }
         .cortexSurfaceCard()
     }
@@ -117,10 +130,16 @@ struct NewsletterWorkbenchView: View {
                 .font(CortexFont.headline)
                 .foregroundStyle(CortexColor.textPrimary)
 
-            HStack(spacing: CortexSpacing.lg) {
-                metric("Sources", "\(total)")
-                metric("Usable", "\(usable)")
-                metric("Quality", "\(Int(quality * 100))%")
+            if engine.snapshot?.newsletter == nil {
+                Text("Source counts appear after local redaction and safety checks run.")
+                    .font(CortexFont.caption)
+                    .foregroundStyle(CortexColor.textSecondary)
+            } else {
+                HStack(spacing: CortexSpacing.lg) {
+                    metric("Sources", "\(total)")
+                    metric("Usable", "\(usable)")
+                    metric("Quality", "\(Int(quality * 100))%")
+                }
             }
         }
         .cortexSurfaceCard()
@@ -130,7 +149,7 @@ struct NewsletterWorkbenchView: View {
     private var previewCard: some View {
         if let newsletter = engine.snapshot?.newsletter {
             VStack(alignment: .leading, spacing: CortexSpacing.sm) {
-                Text(newsletter.title.isEmpty ? "Latest draft" : newsletter.title)
+                Text(previewTitle(newsletter))
                     .font(CortexFont.bodyMedium)
                     .foregroundStyle(CortexColor.textPrimary)
 
@@ -144,19 +163,19 @@ struct NewsletterWorkbenchView: View {
                     Text(newsletter.preview)
                         .font(CortexFont.body)
                         .foregroundStyle(CortexColor.textSecondary)
-                        .lineLimit(8)
                 }
 
                 HStack(spacing: CortexSpacing.sm) {
-                    Text("Status: \(newsletter.status)")
+                    Text(displayStatus(newsletter.status))
                         .font(CortexFont.caption)
                         .foregroundStyle(CortexColor.textTertiary)
                     if !newsletter.generatedAt.isEmpty {
-                        Text("• Updated \(newsletter.generatedAt)")
+                        Text("• \(formattedUpdate(newsletter.generatedAt))")
                             .font(CortexFont.caption)
                             .foregroundStyle(CortexColor.textTertiary)
                     }
                 }
+
             }
             .cortexSurfaceCard()
         } else {
@@ -186,9 +205,27 @@ struct NewsletterWorkbenchView: View {
                 .foregroundStyle(CortexColor.textPrimary)
 
             if let newsletter = engine.snapshot?.newsletter {
-                Text(newsletter.safeToPublish ? "Safe to publish: yes" : "Safe to publish: no")
+                let automatedSafetyPassed = newsletter.safetyReport?.safeToPublish == true
+                Text(automatedSafetyPassed ? "Automated safety check passed" : "Needs safety review")
                     .font(CortexFont.caption)
-                    .foregroundStyle(newsletter.safeToPublish ? CortexColor.success : CortexColor.warning)
+                    .foregroundStyle(automatedSafetyPassed ? CortexColor.success : CortexColor.warning)
+
+                Text(approvalSummary(newsletter))
+                    .font(CortexFont.caption)
+                    .foregroundStyle(CortexColor.textSecondary)
+
+                if let notes = newsletter.safetyReport?.remainingConcerns, !notes.isEmpty {
+                    VStack(alignment: .leading, spacing: CortexSpacing.xxs) {
+                        Text(automatedSafetyPassed ? "Safety actions" : "Remaining concerns")
+                            .font(CortexFont.captionMedium)
+                            .foregroundStyle(CortexColor.textSecondary)
+                        ForEach(notes, id: \.self) { note in
+                            Label(note, systemImage: automatedSafetyPassed ? "checkmark" : "exclamationmark.triangle")
+                                .font(CortexFont.caption)
+                                .foregroundStyle(automatedSafetyPassed ? CortexColor.textSecondary : CortexColor.warning)
+                        }
+                    }
+                }
 
                 if let reasons = newsletter.tasteGate?.reasons, !reasons.isEmpty {
                     Text("Taste gate: \(reasons.joined(separator: ", "))")
@@ -201,12 +238,8 @@ struct NewsletterWorkbenchView: View {
                         .font(CortexFont.caption)
                         .foregroundStyle(CortexColor.textSecondary)
                 }
-            } else if engine.api.isOffline {
-                Text("Connect a server before generating a public-safe draft.")
-                    .font(CortexFont.caption)
-                    .foregroundStyle(CortexColor.warning)
             } else {
-                Text("Private by default. Public drafts require redaction, safety checks, and manual approval.")
+                Text("Private by default. SimpliXio redacts locally, then leaves every draft for your approval.")
                     .font(CortexFont.caption)
                     .foregroundStyle(CortexColor.textSecondary)
             }
@@ -214,34 +247,83 @@ struct NewsletterWorkbenchView: View {
         .cortexSurfaceCard()
     }
 
+    @ViewBuilder
+    private var reviewCard: some View {
+        if let newsletter = engine.snapshot?.newsletter {
+            VStack(alignment: .leading, spacing: CortexSpacing.md) {
+                Label("Review draft", systemImage: "doc.text.magnifyingglass")
+                    .font(CortexFont.headline)
+                    .foregroundStyle(CortexColor.textPrimary)
+
+                if draftMarkdown.isEmpty {
+                    Text("The local Markdown draft could not be opened. Generate it again before approval.")
+                        .font(CortexFont.caption)
+                        .foregroundStyle(CortexColor.warning)
+                } else {
+                    Text(draftMarkdown)
+                        .font(CortexFont.body)
+                        .foregroundStyle(CortexColor.textPrimary)
+                        .lineSpacing(4)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityLabel("Full newsletter draft")
+
+                    if engine.demoModeEnabled {
+                        Label("Preview drafts stay private on this device", systemImage: "lock.fill")
+                            .font(CortexFont.captionMedium)
+                            .foregroundStyle(CortexColor.textSecondary)
+                    } else if newsletter.status == "approved" {
+                        Label("Approved by you", systemImage: "checkmark.seal.fill")
+                            .font(CortexFont.captionMedium)
+                            .foregroundStyle(CortexColor.success)
+                    } else if newsletter.status == "rejected" {
+                        Label("Rejected by you. Nothing was shared.", systemImage: "xmark.circle.fill")
+                            .font(CortexFont.captionMedium)
+                            .foregroundStyle(CortexColor.warning)
+                    } else if newsletter.status == "needs_review" {
+                        Toggle("I reviewed the full draft", isOn: $hasReviewedDraft)
+                            .font(CortexFont.bodyMedium)
+                    }
+                }
+            }
+            .cortexSurfaceCard()
+        }
+    }
+
     private var actions: some View {
         VStack(alignment: .leading, spacing: CortexSpacing.sm) {
-            #if os(iOS)
             VStack(spacing: CortexSpacing.sm) {
-                primaryDraftButton
+                approvalButton
                 shareButton
+                draftButton
+                rejectionButton
             }
-            #else
-            HStack(spacing: CortexSpacing.sm) {
-                primaryDraftButton
-                shareButton
-            }
-            #endif
+            .frame(maxWidth: 420)
 
             if let status = engine.newsletterStatus, !status.isEmpty {
-                Text("Status: \(status)")
+                Text(status)
                     .font(CortexFont.caption)
                     .foregroundStyle(CortexColor.textTertiary)
-            } else if engine.api.isOffline {
-                Text("Draft generation is unavailable in local offline mode.")
+            } else if !hasPotentialSourceMaterial {
+                Text("Add a recent capture or decision to create a draft.")
                     .font(CortexFont.caption)
-                    .foregroundStyle(CortexColor.warning)
+                    .foregroundStyle(CortexColor.textTertiary)
             }
         }
     }
 
     @ViewBuilder
-    private var primaryDraftButton: some View {
+    private var draftButton: some View {
+        if shouldEmphasizeDraftGeneration {
+            generateDraftButton
+                .buttonStyle(CortexPrimaryButtonStyle(fullWidth: true))
+        } else {
+            generateDraftButton
+                .buttonStyle(CortexSecondaryButtonStyle(fullWidth: true))
+        }
+    }
+
+    private var generateDraftButton: some View {
         Button {
             Task {
                 isGeneratingDraft = true
@@ -261,44 +343,177 @@ struct NewsletterWorkbenchView: View {
             }
             .frame(maxWidth: .infinity)
         }
-        .buttonStyle(CortexPrimaryButtonStyle(fullWidth: true))
         .disabled(!canGenerate || isGeneratingDraft)
     }
 
     @ViewBuilder
     private var shareButton: some View {
         if let newsletter = engine.snapshot?.newsletter,
-           !newsletter.markdownPath.isEmpty {
+           newsletter.isApprovedForSharing,
+           !engine.demoModeEnabled {
             let url = URL(fileURLWithPath: newsletter.markdownPath)
             ShareLink(item: url) {
                 Label("Share Markdown", systemImage: "square.and.arrow.up")
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(CortexSecondaryButtonStyle(fullWidth: true))
+            .buttonStyle(CortexPrimaryButtonStyle(fullWidth: true))
+        } else if engine.demoModeEnabled, engine.snapshot?.newsletter != nil {
+            Label("Preview drafts stay on this device", systemImage: "lock.fill")
+                .font(CortexFont.caption)
+                .foregroundStyle(CortexColor.textSecondary)
         }
     }
 
+    @ViewBuilder
+    private var approvalButton: some View {
+        if let newsletter = engine.snapshot?.newsletter,
+           newsletter.status == "needs_review",
+           !engine.demoModeEnabled {
+            Button {
+                Task {
+                    isUpdatingApproval = true
+                    defer { isUpdatingApproval = false }
+                    _ = await engine.approveNewsletterDraft()
+                }
+            } label: {
+                HStack(spacing: CortexSpacing.xs) {
+                    if isUpdatingApproval {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
+                    Label("Approve after review", systemImage: "checkmark.seal")
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(CortexPrimaryButtonStyle(fullWidth: true))
+            .disabled(!canApprove || isUpdatingApproval)
+        }
+    }
+
+    @ViewBuilder
+    private var rejectionButton: some View {
+        if let newsletter = engine.snapshot?.newsletter,
+           newsletter.status == "needs_review",
+           !engine.demoModeEnabled {
+            Button {
+                Task {
+                    isUpdatingApproval = true
+                    defer { isUpdatingApproval = false }
+                    await engine.rejectNewsletterDraft()
+                }
+            } label: {
+                Label("Reject draft", systemImage: "xmark.circle")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(CortexSecondaryButtonStyle(fullWidth: true))
+            .disabled(isUpdatingApproval)
+        }
+    }
+
+    private func previewTitle(_ newsletter: SyncNewsletter) -> String {
+        let title = newsletter.title.isEmpty ? "Latest draft" : newsletter.title
+        return engine.demoModeEnabled ? "Preview: \(title)" : title
+    }
+
+    private func displayStatus(_ status: String) -> String {
+        switch status {
+        case "needs_review": "Needs review"
+        case "approved": "Approved"
+        case "rejected": "Rejected"
+        default: status.replacingOccurrences(of: "_", with: " ").capitalized
+        }
+    }
+
+    private func formattedUpdate(_ rawValue: String) -> String {
+        let parser = ISO8601DateFormatter()
+        var date = parser.date(from: rawValue)
+        if date == nil {
+            parser.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            date = parser.date(from: rawValue)
+        }
+        guard let date else { return "Updated recently" }
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .full
+        return "Updated \(formatter.localizedString(for: date, relativeTo: Date()))"
+    }
+
     private var canGenerate: Bool {
-        if engine.api.isOffline {
-            return false
+        !engine.isSyncing && !isGeneratingDraft && !isUpdatingApproval && hasPotentialSourceMaterial
+    }
+
+    private var canApprove: Bool {
+        guard let newsletter = engine.snapshot?.newsletter else { return false }
+        return !draftMarkdown.isEmpty &&
+            hasReviewedDraft &&
+            newsletter.isEligibleForApproval
+    }
+
+    private var shouldEmphasizeDraftGeneration: Bool {
+        guard let newsletter = engine.snapshot?.newsletter else { return true }
+        return engine.demoModeEnabled || newsletter.status == "rejected"
+    }
+
+    private var hasPotentialSourceMaterial: Bool {
+        let days = selectedSource == .last30Days ? 30 : 7
+        let start = Calendar.current.date(
+            byAdding: .day,
+            value: -(days - 1),
+            to: Calendar.current.startOfDay(for: Date())
+        ) ?? .distantPast
+
+        let hasRecentNote = engine.notes.contains { note in
+            !note.archived &&
+                (engine.demoModeEnabled || !note.id.hasPrefix("demo-note-")) &&
+                sourceDate(note.updatedAt, fallback: note.createdAt) >= start
         }
-        if engine.isSyncing || isGeneratingDraft {
-            return false
+        let hasRecentDecision = engine.snapshot?.recentDecisions.contains { decision in
+            (engine.demoModeEnabled || !decision.id.hasPrefix("demo-decision-")) &&
+                sourceDate(decision.createdAt) >= start
+        } ?? false
+
+        return hasRecentNote || hasRecentDecision
+    }
+
+    private func sourceDate(_ primary: String, fallback: String = "") -> Date {
+        parseISODate(primary) ?? parseISODate(fallback) ?? .distantPast
+    }
+
+    private func parseISODate(_ value: String) -> Date? {
+        guard !value.isEmpty else { return nil }
+        let formatter = ISO8601DateFormatter()
+        if let date = formatter.date(from: value) {
+            return date
         }
-        if let count = engine.snapshot?.newsletter?.sourceCountTotal {
-            return count > 0
-        }
-        return true
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.date(from: value)
     }
 
     private var primaryDraftButtonTitle: String {
         if isGeneratingDraft {
             return "Generating..."
         }
-        if engine.api.isOffline {
-            return "Connect server to draft"
+        return engine.snapshot?.newsletter == nil ? "Create private draft" : "Regenerate private draft"
+    }
+
+    private func approvalSummary(_ newsletter: SyncNewsletter) -> String {
+        switch newsletter.status {
+        case "approved":
+            return "Approved by you. Sharing is still a separate manual action."
+        case "rejected":
+            return "Rejected by you. Nothing was shared."
+        default:
+            return "Review the full draft and approve it before sharing."
         }
-        return "Draft from safe material"
+    }
+
+    private func loadDraftForReview() {
+        guard let path = engine.snapshot?.newsletter?.markdownPath,
+              !path.isEmpty,
+              let markdown = try? String(contentsOfFile: path, encoding: .utf8) else {
+            draftMarkdown = ""
+            return
+        }
+        draftMarkdown = markdown
     }
 
     @ViewBuilder

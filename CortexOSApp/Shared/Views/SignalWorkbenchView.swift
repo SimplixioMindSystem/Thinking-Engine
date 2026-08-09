@@ -22,9 +22,9 @@ struct SignalWorkbenchView: View {
             } else {
                 EmptyStateView(
                     icon: "list.bullet.rectangle",
-                    title: "Signal queues not ready",
-                    message: "Sync to build ranked decision and action queues.",
-                    actionTitle: "Sync",
+                    title: "Preparing your review",
+                    message: "Capture a few thoughts, then refresh to see private on-device queues.",
+                    actionTitle: "Refresh",
                     action: { Task { await engine.sync() } },
                     isActionLoading: engine.isSyncing
                 )
@@ -37,7 +37,7 @@ struct SignalWorkbenchView: View {
 
     private var screenTitle: String {
         switch focus {
-        case .overview: "Review Queue"
+        case .overview: "Queues"
         case .recurringPatterns: "Recurring Patterns"
         case .unresolvedTensions: "Unresolved Tensions"
         case .contentCandidates: "Content Candidates"
@@ -92,34 +92,10 @@ struct SignalWorkbenchView: View {
                         maxVisible: 5
                     )
 
-                    queueCard(
-                        title: "Resurfaced Now",
-                        icon: "arrow.triangle.2.circlepath",
-                        items: snapshot.resurfacedNow ?? [],
-                        emptyText: "No resurfaced items right now.",
-                        maxVisible: 3,
-                        showResurfacingActions: true
-                    )
-
-                    queueCard(
-                        title: "Weekly Review Resurfacing",
-                        icon: "calendar.badge.clock",
-                        items: snapshot.resurfacingWeeklyReviewCandidates ?? [],
-                        emptyText: "No weekly resurfacing candidates yet.",
-                        maxVisible: 5
-                    )
-
                     recurringPatternsCard(snapshot.recurringPatterns ?? [], maxVisible: 5)
 
                 case .recurringPatterns:
                     recurringPatternsCard(snapshot.recurringPatterns ?? [], maxVisible: 5)
-                    queueCard(
-                        title: "Resurfacing Recurring Tensions",
-                        icon: "arrow.triangle.2.circlepath",
-                        items: snapshot.resurfacingRecurringTensions ?? [],
-                        emptyText: "No recurring resurfacing items right now.",
-                        maxVisible: 5
-                    )
 
                 case .unresolvedTensions:
                     queueCard(
@@ -129,28 +105,12 @@ struct SignalWorkbenchView: View {
                         emptyText: "No unresolved tensions detected.",
                         maxVisible: 5
                     )
-                    queueCard(
-                        title: "Resurfaced Now",
-                        icon: "arrow.triangle.2.circlepath",
-                        items: snapshot.resurfacedNow ?? [],
-                        emptyText: "No resurfaced blockers right now.",
-                        maxVisible: 3,
-                        showResurfacingActions: true
-                    )
-
                 case .contentCandidates:
                     queueCard(
                         title: "Content Candidates",
                         icon: "doc.text",
                         items: snapshot.contentCandidates ?? [],
                         emptyText: "No safe content candidates right now.",
-                        maxVisible: 5
-                    )
-                    queueCard(
-                        title: "Content Resurfacing",
-                        icon: "newspaper",
-                        items: snapshot.resurfacingContentCandidates ?? [],
-                        emptyText: "No resurfaced content candidates right now.",
                         maxVisible: 5
                     )
                 }
@@ -169,7 +129,7 @@ struct SignalWorkbenchView: View {
             HStack(spacing: CortexSpacing.lg) {
                 metric("Captured", "\(counts?.signalsTotal ?? 0)")
                 metric("Active", "\(counts?.signalsActive ?? 0)")
-                metric("Ignored", "\(counts?.ignored ?? 0)")
+                metric("Filtered out", "\(counts?.ignored ?? 0)")
             }
         }
         .cortexSurfaceCard()
@@ -181,8 +141,7 @@ struct SignalWorkbenchView: View {
         icon: String,
         items: [SyncRankedSignal],
         emptyText: String,
-        maxVisible: Int,
-        showResurfacingActions: Bool = false
+        maxVisible: Int
     ) -> some View {
         VStack(alignment: .leading, spacing: CortexSpacing.md) {
             Label(title, systemImage: icon)
@@ -213,24 +172,6 @@ struct SignalWorkbenchView: View {
                             queuePill(item.signalType.replacingOccurrences(of: "_", with: " ").capitalized)
                         }
 
-                        if showResurfacingActions {
-                            HStack(spacing: CortexSpacing.sm) {
-                                Button("Act now") {
-                                    Task { await engine.applyResurfacingAction(signalID: item.signalID, actionType: "acted_on") }
-                                }
-                                .buttonStyle(CortexPrimaryButtonStyle())
-
-                                Button("Snooze") {
-                                    Task { await engine.applyResurfacingAction(signalID: item.signalID, actionType: "snoozed") }
-                                }
-                                .buttonStyle(CortexSecondaryButtonStyle())
-
-                                Button("Dismiss") {
-                                    Task { await engine.applyResurfacingAction(signalID: item.signalID, actionType: "dismissed") }
-                                }
-                                .buttonStyle(CortexSecondaryButtonStyle())
-                            }
-                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, CortexSpacing.xs)
