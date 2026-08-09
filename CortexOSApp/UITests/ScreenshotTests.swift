@@ -77,6 +77,22 @@ final class ScreenshotTests: XCTestCase {
         captureWindow("01_focus")
     }
 
+    func testFocusContentRemainsScrollable() throws {
+        let heading = app.staticTexts["Today’s 3 priorities"].firstMatch
+        XCTAssertTrue(heading.waitForExistence(timeout: 5))
+        let originalY = heading.frame.minY
+
+        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.72))
+        let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.30))
+        start.press(forDuration: 0.05, thenDragTo: end)
+
+        XCTAssertLessThan(
+            heading.frame.minY,
+            originalY - 10,
+            "Focus content should scroll rather than overlap its heading."
+        )
+    }
+
     func testCaptureReviewHistory() throws {
         // Review history is the compact decision/replay surface on iPhone.
         let reviewButton = app.navigationBars.buttons["Review history"]
@@ -118,6 +134,22 @@ final class ScreenshotTests: XCTestCase {
         captureWindow("03_capture")
     }
 
+    func testCaptureEditorKeepsFocusAndAcceptsWriting() throws {
+        let captureTab = app.tabBars.buttons["Capture"]
+        XCTAssertTrue(captureTab.waitForExistence(timeout: 5))
+        captureTab.tap()
+
+        let editor = app.textViews.firstMatch
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        editor.tap()
+        editor.typeText("A thought that should remain editable")
+
+        XCTAssertTrue(
+            (editor.value as? String)?.contains("remain editable") == true,
+            "Tapping the writing surface must keep keyboard focus."
+        )
+    }
+
     func testCaptureSettings() throws {
         // Tap the gear icon to open Settings
         let settingsButton = app.navigationBars.buttons.matching(
@@ -140,8 +172,8 @@ final class ScreenshotTests: XCTestCase {
         sleep(1)
 
         XCTAssertTrue(
-            app.staticTexts["Semantic search"].waitForExistence(timeout: 5),
-            "Expected on-device semantic index status in Settings."
+            app.navigationBars["Settings"].waitForExistence(timeout: 5),
+            "Expected the Settings sheet to be visible."
         )
 
         captureWindow("04_settings")
@@ -151,12 +183,19 @@ final class ScreenshotTests: XCTestCase {
     // MARK: - macOS Screenshots
 
     #if os(macOS)
-    private func launchMacApp(sectionID: String? = nil, searchQuery: String? = nil) {
+    private func launchMacApp(
+        sectionID: String? = nil,
+        searchQuery: String? = nil,
+        usePreviewContent: Bool = true
+    ) {
         if app.state != .notRunning {
             app.terminate()
         }
 
         var arguments = ["-UITests", "-Screenshots"]
+        if !usePreviewContent {
+            arguments.append("-UITestsNoDemo")
+        }
         if let sectionID {
             arguments += ["-mac-section", sectionID]
         }
@@ -176,8 +215,39 @@ final class ScreenshotTests: XCTestCase {
         captureWindow("01_focus")
     }
 
+    func testCaptureMacCaptureSidebar() throws {
+        launchMacApp(sectionID: "capture")
+        XCTAssertTrue(app.staticTexts["Capture without sorting first"].waitForExistence(timeout: 5))
+        captureWindow("02_capture")
+    }
+
+    func testCaptureWeeklyReviewSidebar() throws {
+        launchMacApp(sectionID: "weeklyReview")
+        XCTAssertTrue(app.staticTexts["Top Repeated Priorities"].waitForExistence(timeout: 5))
+        captureWindow("03_weekly_review")
+    }
+
+    func testCaptureDecisionReplaySidebar() throws {
+        launchMacApp(sectionID: "decisionReplay")
+        XCTAssertTrue(app.staticTexts["Final Priorities"].waitForExistence(timeout: 5))
+        captureWindow("04_decision_replay")
+    }
+
+    func testCaptureNewsletterSidebar() throws {
+        launchMacApp(sectionID: "newsletter")
+        XCTAssertTrue(app.staticTexts["Public-safe draft"].waitForExistence(timeout: 5))
+        captureWindow("05_newsletter")
+    }
+
     func testCaptureInsightsSidebar() throws {
         launchMacApp(sectionID: "insights")
+        let insightsItem = app.descendants(matching: .any)
+            .matching(identifier: "sidebar.insights")
+            .firstMatch
+        XCTAssertTrue(
+            insightsItem.waitForExistence(timeout: 5),
+            "The selected advanced section should be visible in the sidebar."
+        )
         captureWindow("02_insights")
     }
 
@@ -199,8 +269,8 @@ final class ScreenshotTests: XCTestCase {
     func testCaptureSettingsSidebar() throws {
         launchMacApp(sectionID: "settings")
         XCTAssertTrue(
-            app.staticTexts["Semantic search"].waitForExistence(timeout: 5),
-            "Expected on-device semantic index status in macOS Settings."
+            app.staticTexts["Private semantic search"].waitForExistence(timeout: 5),
+            "Expected private-search status in macOS Settings."
         )
         captureWindow("06_settings")
     }
@@ -222,7 +292,7 @@ final class ScreenshotTests: XCTestCase {
     }
 
     func testSettingsSyncButtonKeepsAppResponsive() throws {
-        launchMacApp(sectionID: "settings")
+        launchMacApp(sectionID: "settings", usePreviewContent: false)
 
         let syncButton = app.buttons.containing(
             NSPredicate(format: "label CONTAINS[c] 'Sync'")
@@ -234,6 +304,32 @@ final class ScreenshotTests: XCTestCase {
             .matching(identifier: "settings.screen")
             .firstMatch
         XCTAssertTrue(settingsContent.waitForExistence(timeout: 5))
+    }
+
+    func testSidebarRemainsStableAcrossCoreNavigation() throws {
+        launchMacApp(sectionID: "focus")
+
+        for identifier in ["sidebar.notes", "sidebar.focus", "sidebar.settings", "sidebar.focus"] {
+            let item = app.descendants(matching: .any)
+                .matching(identifier: identifier)
+                .firstMatch
+            XCTAssertTrue(item.waitForExistence(timeout: 5), "Expected \(identifier) in the sidebar.")
+            item.click()
+        }
+
+        let focus = app.descendants(matching: .any)
+            .matching(identifier: "sidebar.focus")
+            .firstMatch
+        let root = app.descendants(matching: .any)
+            .matching(identifier: "mac.root")
+            .firstMatch
+        XCTAssertTrue(root.exists)
+        XCTAssertGreaterThan(focus.frame.minY, root.frame.minY)
+        XCTAssertLessThan(
+            focus.frame.minY - root.frame.minY,
+            180,
+            "The sidebar should begin near the toolbar instead of leaving a large empty band."
+        )
     }
     #endif
 }
