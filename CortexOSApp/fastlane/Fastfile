@@ -7,14 +7,14 @@
 #   cd CortexOSApp
 #   fastlane ios_testflight version:1.1.3    — build iOS + upload to TestFlight
 #   fastlane mac_testflight version:1.1.3    — build macOS + upload to TestFlight
-#   fastlane all_testflight version:1.1.3    — iOS + macOS + watchOS (shared build number)
+#   fastlane all_testflight version:1.1.3    — iOS/watchOS + macOS (shared build number)
+#   Re-run the same version/build_number to resume an interrupted platform upload.
 
 default_platform(:ios)
-require "fileutils"
 require "open3"
 require "rubygems"
-require "shellwords"
 require "spaceship"
+require "tmpdir"
 
 # All sensitive values are loaded from fastlane/.env (never committed).
 # See fastlane/.env.example for the required keys.
@@ -30,19 +30,24 @@ APP_ROOT      = File.expand_path("..", __dir__)          unless defined?(APP_ROO
 ASC_KEY_ID   = ENV.fetch("ASC_KEY_ID")                   unless defined?(ASC_KEY_ID)
 ASC_ISSUER   = ENV.fetch("ASC_ISSUER")                   unless defined?(ASC_ISSUER)
 ASC_KEY_PATH = File.expand_path(ENV.fetch("ASC_KEY_PATH")) unless defined?(ASC_KEY_PATH)
+DISTRIBUTION_CERT_ID = ENV.fetch("DISTRIBUTION_CERT_ID") unless defined?(DISTRIBUTION_CERT_ID)
+IOS_RELEASE_PROFILE = "#{IOS_BUNDLE} AppStore #{DISTRIBUTION_CERT_ID}" unless defined?(IOS_RELEASE_PROFILE)
+WIDGET_RELEASE_PROFILE = "#{WIDGET_BUNDLE} AppStore #{DISTRIBUTION_CERT_ID}" unless defined?(WIDGET_RELEASE_PROFILE)
+WATCH_RELEASE_PROFILE = "#{WATCH_BUNDLE} AppStore #{DISTRIBUTION_CERT_ID}" unless defined?(WATCH_RELEASE_PROFILE)
+MAC_RELEASE_PROFILE = "#{MAC_BUNDLE} AppStore #{DISTRIBUTION_CERT_ID}" unless defined?(MAC_RELEASE_PROFILE)
 
 unless File.file?(ASC_KEY_PATH)
   UI.user_error!("ASC_KEY_PATH must point to an existing App Store Connect API key file.")
 end
 
-# Xcargs for automatic provisioning with API key
+# Release targets select their installed App Store profiles in project.yml.
+# App Store Connect authentication stays separate from local archive signing.
 SIGN_ARGS = [
   "DEVELOPMENT_TEAM=#{TEAM_ID}",
-  "CODE_SIGN_STYLE=Automatic",
-  "-allowProvisioningUpdates",
-  "-authenticationKeyPath #{ASC_KEY_PATH}",
-  "-authenticationKeyID #{ASC_KEY_ID}",
-  "-authenticationKeyIssuerID #{ASC_ISSUER}",
+  "SIMPLIXIO_IOS_PROFILE='#{IOS_RELEASE_PROFILE}'",
+  "SIMPLIXIO_WIDGET_PROFILE='#{WIDGET_RELEASE_PROFILE}'",
+  "SIMPLIXIO_WATCH_PROFILE='#{WATCH_RELEASE_PROFILE}'",
+  "SIMPLIXIO_MAC_PROFILE='#{MAC_RELEASE_PROFILE}'",
 ].join(" ") unless defined?(SIGN_ARGS)
 
 # ── Xcode project regen ────────────────────────────────────
@@ -87,22 +92,106 @@ rescue StandardError
   nil
 end
 
-def fetch_latest_store_version(bundle_id:, platform:)
-  app = Spaceship::ConnectAPI::App.find(bundle_id: bundle_id)
-  return nil if app.nil?
+def with_apple_api_retry(label:, attempts: 3)
+  attempts.times do |index|
+    begin
+      return yield
+    rescue StandardError => e
+      raise if index == attempts - 1
 
-  # Spaceship API accepts positional platform string (e.g. "IOS", "MAC_OS")
-  platform_str = platform.to_s
-  latest = app.get_latest_app_store_version(platform_str)
-  return nil if latest.nil?
+      delay = (index + 1) * 2
+      UI.important("#{label} failed: #{e.message}. Retrying in #{delay} seconds.")
+      sleep(delay)
+    end
+  end
+end
 
-  version = latest.version_string.to_s.strip
-  return nil if version.empty?
+def find_connect_app(bundle_id)
+  find_method = Spaceship::ConnectAPI::App.method(:find)
+  supports_keyword_bundle_id = find_method.parameters.any? do |kind, name|
+    [:key, :keyreq].include?(kind) && name == :bundle_id
+  end
+  if supports_keyword_bundle_id
+    Spaceship::ConnectAPI::App.find(bundle_id: bundle_id)
+  else
+    Spaceship::ConnectAPI::App.find(bundle_id)
+  end
+end
 
-  parse_semver(version) ? version : nil
+def fetch_latest_apple_version(bundle_id:, platform:)
+  with_apple_api_retry(label: "Reading Apple versions for #{bundle_id}") do
+    app = find_connect_app(bundle_id)
+    next nil if app.nil?
+
+    platform_str = platform.to_s
+    version_method = app.method(:get_latest_app_store_version)
+    supports_keyword_platform = version_method.parameters.any? do |kind, name|
+      [:key, :keyreq].include?(kind) && name == :platform
+    end
+    latest_store_version = if supports_keyword_platform
+      app.get_latest_app_store_version(platform: platform_str)
+    else
+      app.get_latest_app_store_version(platform_str)
+    end
+    approved_version = latest_store_version&.version_string.to_s.strip
+
+    # Closed TestFlight trains may be newer than the approved App Store version.
+    # Include uploaded builds so automatic and explicit releases never reuse one.
+    uploaded_versions = app.get_builds(
+      includes: "preReleaseVersion",
+      limit: 200,
+      sort: "-uploadedDate",
+    ).filter_map do |build|
+      pre_release = build.pre_release_version
+      next if pre_release.nil? || pre_release.platform.to_s != platform_str
+
+      version = pre_release.version.to_s.strip
+      parse_semver(version) ? version : nil
+    end
+
+    highest_version([approved_version] + uploaded_versions)
+  end
 rescue StandardError => e
-  UI.important("Could not read latest App Store version for #{bundle_id} (#{platform}): #{e.message}")
+  UI.important("Could not read latest Apple release/TestFlight version for #{bundle_id} (#{platform}): #{e.message}")
   nil
+end
+
+def fetch_existing_apple_build!(bundle_id:, platform:, version:, build_number:)
+  with_apple_api_retry(label: "Inspecting Apple build for #{bundle_id}") do
+    app = find_connect_app(bundle_id)
+    UI.user_error!("Could not find App Store Connect app for #{bundle_id}.") if app.nil?
+
+    Spaceship::ConnectAPI::Build.all(
+      app_id: app.id,
+      version: version,
+      build_number: build_number,
+      platform: platform.to_s,
+      limit: 30,
+    ).first
+  end
+rescue StandardError => e
+  UI.user_error!(
+    "Could not inspect Apple build #{version} (#{build_number}) for #{bundle_id}: #{e.message}"
+  )
+end
+
+def resumable_apple_build?(build, platform_name:)
+  return false if build.nil?
+
+  accepted_states = [
+    Spaceship::ConnectAPI::Build::ProcessingState::PROCESSING,
+    Spaceship::ConnectAPI::Build::ProcessingState::VALID,
+  ]
+  state = build.processing_state.to_s
+  unless accepted_states.include?(state)
+    UI.user_error!(
+      "Apple already has the #{platform_name} build, but its state is #{state}. " \
+      "Retry with a new shared build_number."
+    )
+  end
+
+  UI.success("Apple already accepted the #{platform_name} build (#{state}); skipping its duplicate upload.")
+  true
 end
 
 def highest_version(candidates)
@@ -115,12 +204,49 @@ def highest_version(candidates)
   versions.max_by { |(_, semver)| semver }.first
 end
 
-def next_safe_auto_version(current_version)
-  latest_ios = fetch_latest_store_version(
+def validate_requested_store_version!(version, existing_builds:)
+  requested = parse_semver(version)
+  UI.user_error!("Invalid version '#{version}'. Use semantic version format x.y.z.") if requested.nil?
+
+  latest_ios = fetch_latest_apple_version(
     bundle_id: IOS_BUNDLE,
     platform: Spaceship::ConnectAPI::Platform::IOS,
   )
-  latest_mac = fetch_latest_store_version(
+  latest_mac = fetch_latest_apple_version(
+    bundle_id: MAC_BUNDLE,
+    platform: Spaceship::ConnectAPI::Platform::MAC_OS,
+  )
+  latest_store_version = highest_version([latest_ios, latest_mac])
+
+  if latest_store_version && requested < parse_semver(latest_store_version)
+    UI.user_error!(
+      "Version #{version} is older than the latest Apple release/TestFlight version " \
+      "#{latest_store_version}. Use #{next_patch_version(latest_store_version)} or omit version: for a safe automatic bump."
+    )
+  end
+
+  if latest_store_version && requested == parse_semver(latest_store_version)
+    unless existing_builds.values.any?
+      UI.user_error!(
+        "Version #{version} is already in use by Apple. " \
+        "Use #{next_patch_version(latest_store_version)} or omit version: for a safe automatic bump."
+      )
+    end
+
+    UI.message("Resuming the existing Apple release #{version} with its shared build number.")
+  end
+
+  if latest_store_version.nil?
+    UI.important("Could not verify the explicit version against Apple; continuing with #{version} as requested.")
+  end
+end
+
+def next_safe_auto_version(current_version)
+  latest_ios = fetch_latest_apple_version(
+    bundle_id: IOS_BUNDLE,
+    platform: Spaceship::ConnectAPI::Platform::IOS,
+  )
+  latest_mac = fetch_latest_apple_version(
     bundle_id: MAC_BUNDLE,
     platform: Spaceship::ConnectAPI::Platform::MAC_OS,
   )
@@ -170,15 +296,21 @@ def persist_project_release_settings!(version:, build_number:)
   UI.user_error!("Missing project spec at #{spec_path}") unless File.file?(spec_path)
 
   contents = File.read(spec_path)
-  updated = contents
-    .sub(/^(\s*MARKETING_VERSION:\s*)"[^"]*"/, "\\1\"#{version}\"")
-    .sub(/^(\s*CURRENT_PROJECT_VERSION:\s*)"[^"]*"/, "\\1\"#{build_number}\"")
-
-  if updated == contents
-    UI.user_error!("Unable to update MARKETING_VERSION/CURRENT_PROJECT_VERSION in #{spec_path}.")
+  version_pattern = /^(\s*MARKETING_VERSION:\s*)"[^"]*"/
+  build_pattern = /^(\s*CURRENT_PROJECT_VERSION:\s*)"[^"]*"/
+  unless contents.match?(version_pattern) && contents.match?(build_pattern)
+    UI.user_error!("Unable to find MARKETING_VERSION/CURRENT_PROJECT_VERSION in #{spec_path}.")
   end
 
-  File.write(spec_path, updated)
+  updated = contents
+    .sub(version_pattern, "\\1\"#{version}\"")
+    .sub(build_pattern, "\\1\"#{build_number}\"")
+
+  if updated == contents
+    UI.message("Project release settings already match version #{version} build #{build_number}.")
+  else
+    File.write(spec_path, updated)
+  end
   sh("cd .. && LOCAL_YAML=1 xcodegen generate 2>&1")
   UI.success("Persisted release version #{version} build #{build_number} in project.yml and regenerated the Xcode project.")
 end
@@ -191,54 +323,229 @@ def resolve_build_number(options = {})
   next_build_number
 end
 
-def xcodebuild_output(*args)
-  Dir.chdir(APP_ROOT) do
-    Open3.capture2e("xcodebuild", *args)
-  end
-end
-
-def shell_join(args)
-  args.map(&:to_s).shelljoin
-end
-
-def write_export_options(path, method:)
-  File.write(path, <<~PLIST)
-    <?xml version="1.0" encoding="UTF-8"?>
-    <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-    <plist version="1.0">
-    <dict>
-      <key>method</key>
-      <string>#{method}</string>
-      <key>signingStyle</key>
-      <string>automatic</string>
-      <key>teamID</key>
-      <string>#{TEAM_ID}</string>
-    </dict>
-    </plist>
-  PLIST
-end
-
 def ios_project_embeds_watch?
   pbxproj = File.join(APP_ROOT, PROJECT, "project.pbxproj")
   File.file?(pbxproj) && File.read(pbxproj).include?("Embed Watch Content")
 end
 
-def verify_embedded_watch_ipa!(ipa_path)
-  UI.user_error!("iOS IPA path is missing, so the embedded watch app cannot be verified.") if ipa_path.to_s.empty?
+def read_plist_value!(path, key)
+  UI.user_error!("Missing property list at #{path}.") unless File.file?(path)
+  output, status = Open3.capture2e(
+    "/usr/bin/plutil",
+    "-extract",
+    key,
+    "raw",
+    "-o",
+    "-",
+    path,
+  )
+  UI.user_error!("Could not read #{key} from #{path}: #{output}") unless status.success?
+  output.strip
+end
+
+def verify_plist_value!(path, key, expected)
+  actual = read_plist_value!(path, key)
+  return if actual == expected.to_s
+
+  UI.user_error!("Invalid #{key} in #{path}: expected #{expected}, found #{actual}.")
+end
+
+def verify_privacy_manifest!(bundle_path, relative_path)
+  path = File.join(bundle_path, relative_path)
+  UI.user_error!("Missing privacy manifest in #{bundle_path}.") unless File.file?(path)
+end
+
+def verify_signed_bundle!(bundle_path, required_entitlements: {})
+  output, status = Open3.capture2e(
+    "/usr/bin/codesign",
+    "--verify",
+    "--deep",
+    "--strict",
+    bundle_path,
+  )
+  UI.user_error!("Code signature verification failed for #{bundle_path}: #{output}") unless status.success?
+
+  stdout, stderr, entitlement_status = Open3.capture3(
+    "/usr/bin/codesign",
+    "-d",
+    "--entitlements",
+    "-",
+    bundle_path,
+  )
+  entitlement_output = "#{stdout}\n#{stderr}"
+  unless entitlement_status.success?
+    UI.user_error!("Could not inspect signed entitlements for #{bundle_path}: #{entitlement_output}")
+  end
+
+  required_entitlements.each do |key, value|
+    unless entitlement_output.include?(key) && entitlement_output.include?(value.to_s)
+      UI.user_error!("Signed bundle #{bundle_path} is missing #{key}=#{value}.")
+    end
+  end
+end
+
+def verify_bundle_metadata!(bundle_path, bundle_id:, version:, build_number:)
+  info_path = File.join(bundle_path, "Info.plist")
+  verify_plist_value!(info_path, "CFBundleIdentifier", bundle_id)
+  verify_plist_value!(info_path, "CFBundleShortVersionString", version)
+  verify_plist_value!(info_path, "CFBundleVersion", build_number)
+  verify_plist_value!(info_path, "ITSAppUsesNonExemptEncryption", "false")
+end
+
+def verify_private_sync_runtime!(bundle_path, executable_path)
+  root_info_path = File.join(bundle_path, "Info.plist")
+  info_path = File.file?(root_info_path) ? root_info_path : File.join(bundle_path, "Contents", "Info.plist")
+  verify_plist_value!(
+    info_path,
+    "SimpliXioKeychainAccessGroup",
+    "#{TEAM_ID}.me.ph7.cortexos.shared",
+  )
+
+  strings, status = Open3.capture2e("/usr/bin/strings", executable_path)
+  UI.user_error!("Could not inspect release executable #{executable_path}: #{strings}") unless status.success?
+
+  forbidden_markers = ["up.railway.app", "cortex_api_url", "/sync/snapshot"]
+  leaked_marker = forbidden_markers.find { |marker| strings.include?(marker) }
+  unless leaked_marker.nil?
+    UI.user_error!("Release executable contains optional server marker '#{leaked_marker}'.")
+  end
+end
+
+def apple_sync_entitlements(include_app_group: false)
+  entitlements = {
+    "com.apple.developer.ubiquity-kvstore-identifier" => "#{TEAM_ID}.me.ph7.cortexos.ios",
+    "keychain-access-groups" => "#{TEAM_ID}.me.ph7.cortexos.shared",
+  }
+  if include_app_group
+    entitlements["com.apple.security.application-groups"] = "group.me.ph7.cortexos"
+  end
+  entitlements
+end
+
+def verify_ios_release_ipa!(ipa_path, version:, build_number:)
+  UI.user_error!("iOS IPA path is missing.") if ipa_path.to_s.empty?
   UI.user_error!("iOS IPA does not exist at #{ipa_path}.") unless File.file?(ipa_path)
 
-  contents, status = Open3.capture2e("unzip", "-Z1", ipa_path)
-  unless status.success?
-    UI.user_error!("Unable to inspect iOS IPA for embedded watch app: #{contents}")
+  Dir.mktmpdir("simplixio-ipa-") do |directory|
+    output, status = Open3.capture2e("/usr/bin/unzip", "-q", ipa_path, "-d", directory)
+    UI.user_error!("Unable to inspect iOS IPA: #{output}") unless status.success?
+
+    app_paths = Dir.glob(File.join(directory, "Payload", "*.app"))
+    UI.user_error!("Expected one iOS app in the IPA, found #{app_paths.length}.") unless app_paths.length == 1
+    app_path = app_paths.first
+    watch_paths = Dir.glob(File.join(app_path, "Watch", "*.app"))
+    widget_paths = Dir.glob(File.join(app_path, "PlugIns", "*.appex"))
+    UI.user_error!("Expected one embedded watchOS app, found #{watch_paths.length}.") unless watch_paths.length == 1
+    UI.user_error!("Expected one embedded widget, found #{widget_paths.length}.") unless widget_paths.length == 1
+
+    watch_path = watch_paths.first
+    widget_path = widget_paths.first
+    verify_bundle_metadata!(
+      app_path,
+      bundle_id: IOS_BUNDLE,
+      version: version,
+      build_number: build_number,
+    )
+    verify_bundle_metadata!(
+      watch_path,
+      bundle_id: WATCH_BUNDLE,
+      version: version,
+      build_number: build_number,
+    )
+    verify_bundle_metadata!(
+      widget_path,
+      bundle_id: WIDGET_BUNDLE,
+      version: version,
+      build_number: build_number,
+    )
+    verify_private_sync_runtime!(app_path, File.join(app_path, "SimpliXio"))
+    watch_executable = read_plist_value!(File.join(watch_path, "Info.plist"), "CFBundleExecutable")
+    verify_private_sync_runtime!(watch_path, File.join(watch_path, watch_executable))
+    verify_plist_value!(
+      File.join(watch_path, "Info.plist"),
+      "WKCompanionAppBundleIdentifier",
+      IOS_BUNDLE,
+    )
+
+    verify_privacy_manifest!(app_path, "PrivacyInfo.xcprivacy")
+    verify_privacy_manifest!(watch_path, "PrivacyInfo.xcprivacy")
+    verify_privacy_manifest!(widget_path, "PrivacyInfo.xcprivacy")
+    verify_signed_bundle!(
+      app_path,
+      required_entitlements: apple_sync_entitlements(include_app_group: true),
+    )
+    verify_signed_bundle!(watch_path, required_entitlements: apple_sync_entitlements)
+    verify_signed_bundle!(
+      widget_path,
+      required_entitlements: {
+        "com.apple.security.application-groups" => "group.me.ph7.cortexos",
+      },
+    )
   end
 
-  has_watch_app = contents.lines.any? do |line|
-    line.match?(%r{^Payload/[^/]+\.app/Watch/[^/]+\.app/$})
+  UI.success("Verified signed iOS, embedded watchOS, and widget release artifacts.")
+end
+
+def verify_macos_release!(archive_path, pkg_path, version:, build_number:)
+  UI.user_error!("macOS archive path is missing.") if archive_path.to_s.empty?
+  app_path = File.join(archive_path, "Products", "Applications", "SimpliXio.app")
+  UI.user_error!("macOS archive does not contain SimpliXio.app.") unless File.directory?(app_path)
+  UI.user_error!("macOS export did not produce a signed package.") if pkg_path.to_s.empty? || !File.file?(pkg_path)
+
+  info_path = File.join(app_path, "Contents", "Info.plist")
+  verify_plist_value!(info_path, "CFBundleIdentifier", MAC_BUNDLE)
+  verify_plist_value!(info_path, "CFBundleShortVersionString", version)
+  verify_plist_value!(info_path, "CFBundleVersion", build_number)
+  verify_plist_value!(info_path, "ITSAppUsesNonExemptEncryption", "false")
+  verify_private_sync_runtime!(app_path, File.join(app_path, "Contents", "MacOS", "SimpliXio"))
+  verify_privacy_manifest!(app_path, File.join("Contents", "Resources", "PrivacyInfo.xcprivacy"))
+  verify_signed_bundle!(
+    app_path,
+    required_entitlements: apple_sync_entitlements.merge(
+      "com.apple.security.app-sandbox" => "true",
+    ),
+  )
+
+  binary_path = File.join(app_path, "Contents", "MacOS", "SimpliXio")
+  architectures, architecture_status = Open3.capture2e("/usr/bin/lipo", "-archs", binary_path)
+  unless architecture_status.success? && architectures.include?("arm64") && architectures.include?("x86_64")
+    UI.user_error!("macOS release must contain arm64 and x86_64: #{architectures}")
   end
 
-  UI.user_error!("iOS IPA does not include an embedded watchOS app under Payload/*.app/Watch/.") unless has_watch_app
+  signature, signature_status = Open3.capture2e("/usr/sbin/pkgutil", "--check-signature", pkg_path)
+  UI.user_error!("macOS package signature is invalid: #{signature}") unless signature_status.success?
+  UI.success("Verified signed universal macOS release artifact.")
+end
 
-  UI.success("Verified iOS IPA includes the embedded watchOS app.")
+def ensure_icloud_capability!(bundle_id)
+  identifier = with_apple_api_retry(label: "Reading Apple capabilities for #{bundle_id}") do
+    Spaceship::ConnectAPI::BundleId.find(bundle_id)
+  end
+  UI.user_error!("Could not find Apple bundle identifier #{bundle_id}.") if identifier.nil?
+
+  capability = Spaceship::ConnectAPI::BundleIdCapability
+  existing = with_apple_api_retry(label: "Checking iCloud capability for #{bundle_id}") do
+    identifier.get_capabilities.find do |item|
+      item.is_type?(capability::Type::ICLOUD)
+    end
+  end
+  unless existing.nil?
+    UI.success("Verified iCloud capability for #{bundle_id}.")
+    return
+  end
+
+  settings = [{
+    key: capability::Settings::ICLOUD_VERSION,
+    options: [{ key: capability::Options::XCODE_6 }],
+  }]
+
+  with_apple_api_retry(label: "Enabling iCloud capability for #{bundle_id}") do
+    identifier.create_capability(
+      capability::Type::ICLOUD,
+      settings: settings,
+    )
+  end
+  UI.success("Enabled iCloud capability for #{bundle_id}.")
 end
 
 # ── iOS TestFlight ──────────────────────────────────────────
@@ -254,11 +561,31 @@ platform :ios do
       scheme: "CortexOS-iOS",
       clean: true,
       export_method: "app-store",
+      export_options: {
+        method: "app-store",
+        signingStyle: "manual",
+        provisioningProfiles: {
+          IOS_BUNDLE => IOS_RELEASE_PROFILE,
+          WIDGET_BUNDLE => WIDGET_RELEASE_PROFILE,
+          WATCH_BUNDLE => WATCH_RELEASE_PROFILE,
+        },
+      },
+      output_directory: File.join(APP_ROOT, "build", "testflight", "ios"),
+      output_name: "SimpliXio-iOS",
       xcargs: "#{SIGN_ARGS} MARKETING_VERSION=#{version} CURRENT_PROJECT_VERSION=#{build_number}",
     )
 
+    ipa_path = lane_context[SharedValues::IPA_OUTPUT_PATH]
+    verify_ios_release_ipa!(
+      ipa_path,
+      version: version,
+      build_number: build_number,
+    )
+
     upload_to_testflight(
+      ipa: ipa_path,
       skip_waiting_for_build_processing: true,
+      app_platform: "ios",
       app_identifier: IOS_BUNDLE,
       uses_non_exempt_encryption: false,
     )
@@ -280,7 +607,25 @@ platform :mac do
       scheme: "CortexOS-macOS",
       clean: true,
       export_method: "app-store",
+      export_options: {
+        method: "app-store",
+        signingStyle: "manual",
+        provisioningProfiles: {
+          MAC_BUNDLE => MAC_RELEASE_PROFILE,
+        },
+      },
+      output_directory: File.join(APP_ROOT, "build", "testflight", "macos"),
+      output_name: "SimpliXio-macOS",
       xcargs: "#{SIGN_ARGS} MARKETING_VERSION=#{version} CURRENT_PROJECT_VERSION=#{build_number}",
+    )
+
+    pkg_path = lane_context[SharedValues::PKG_OUTPUT_PATH]
+    archive_path = lane_context[SharedValues::XCODEBUILD_ARCHIVE]
+    verify_macos_release!(
+      archive_path,
+      pkg_path,
+      version: version,
+      build_number: build_number,
     )
 
     upload_to_testflight(
@@ -288,7 +633,7 @@ platform :mac do
       app_platform: "osx",
       app_identifier: MAC_BUNDLE,
       uses_non_exempt_encryption: false,
-      pkg: lane_context[SharedValues::PKG_OUTPUT_PATH],
+      pkg: pkg_path,
     )
 
     UI.success("macOS build #{build_number} (#{version}) uploaded to TestFlight.")
@@ -307,99 +652,14 @@ lane :mac_testflight do |options|
   Fastlane::LaneManager.cruise_lane("mac", "testflight_release", options)
 end
 
-desc "watchOS TestFlight"
+desc "Build iOS with its embedded watchOS app and upload both to TestFlight"
 lane :watch_testflight do |options|
-  strict_watch_publish = if options[:strict_watch].nil?
-    true
-  else
-    !["false", "0", "no"].include?(options[:strict_watch].to_s.strip.downcase)
-  end
-  destinations, status = xcodebuild_output(
-    "-showdestinations",
-    "-scheme",
-    "CortexOS-watchOS",
-    "-project",
-    PROJECT,
-  )
-
-  has_watch_destination = status.success? && destinations.include?("platform:watchOS")
-  has_missing_platform_error = destinations.include?("is not installed")
-
-  if !has_watch_destination || has_missing_platform_error
-    message = "watchOS upload blocked: watchOS platform is not available in this Xcode install."
-    install_hint = "Install watchOS from Xcode > Settings > Components, then run `fastlane watch_testflight`."
-    if strict_watch_publish
-      UI.user_error!("#{message} #{install_hint}")
-    else
-      UI.important("Skipping watchOS upload: #{message}")
-      UI.important(install_hint)
-      next
-    end
-  end
-
-  version      = apply_release_version_if_requested(options)
-  build_number = resolve_build_number(options)
-  watch_build_root = File.join(APP_ROOT, "build", "watchos-testflight")
-  archive_path = File.join(watch_build_root, "SimpliXio Watch #{build_number}.xcarchive")
-  export_path = File.join(watch_build_root, "export")
-  export_options_path = File.join(watch_build_root, "ExportOptions.plist")
-
-  FileUtils.rm_rf(watch_build_root)
-  FileUtils.mkdir_p(export_path)
-  write_export_options(export_options_path, method: "release-testing")
-
-  archive_args = [
-    "xcodebuild",
-    "-scheme", "CortexOS-watchOS",
-    "-project", PROJECT,
-    "-destination", "generic/platform=watchOS",
-    "-archivePath", archive_path,
-    "DEVELOPMENT_TEAM=#{TEAM_ID}",
-    "CODE_SIGN_STYLE=Automatic",
-    "-allowProvisioningUpdates",
-    "-authenticationKeyPath", ASC_KEY_PATH,
-    "-authenticationKeyID", ASC_KEY_ID,
-    "-authenticationKeyIssuerID", ASC_ISSUER,
-    "MARKETING_VERSION=#{version}",
-    "CURRENT_PROJECT_VERSION=#{build_number}",
-    "SKIP_INSTALL=NO",
-    "clean",
-    "archive",
-  ]
-
-  export_args = [
-    "xcodebuild",
-    "-exportArchive",
-    "-archivePath", archive_path,
-    "-exportOptionsPlist", export_options_path,
-    "-exportPath", export_path,
-    "DEVELOPMENT_TEAM=#{TEAM_ID}",
-    "CODE_SIGN_STYLE=Automatic",
-    "-allowProvisioningUpdates",
-    "-authenticationKeyPath", ASC_KEY_PATH,
-    "-authenticationKeyID", ASC_KEY_ID,
-    "-authenticationKeyIssuerID", ASC_ISSUER,
-  ]
-
-  Dir.chdir(APP_ROOT) do
-    sh(shell_join(archive_args))
-    sh(shell_join(export_args))
-  end
-
-  ipa_path = Dir[File.join(export_path, "*.ipa")].first
-  UI.user_error!("watchOS export did not produce an IPA in #{export_path}.") if ipa_path.nil?
-
-  upload_to_testflight(
-    ipa: ipa_path,
-    skip_waiting_for_build_processing: true,
-    app_identifier: WATCH_BUNDLE,
-    uses_non_exempt_encryption: false,
-  )
-
-  UI.success("watchOS build #{build_number} uploaded to TestFlight.")
+  UI.user_error!("The iOS target must embed the watchOS app before upload.") unless ios_project_embeds_watch?
+  Fastlane::LaneManager.cruise_lane("ios", "testflight_release", options)
+  UI.success("watchOS delivery completed through the verified iOS IPA.")
 end
 
-desc "Build and upload iOS, macOS, and watchOS to TestFlight"
+desc "Publish one shared iOS/watchOS/macOS release with resumable platform uploads"
 lane :all_testflight do |options|
   shared_build_number = resolve_build_number(options)
 
@@ -411,9 +671,25 @@ lane :all_testflight do |options|
     target: "CortexOS-iOS",
   )
   requested_version = resolve_release_version(options)
+  existing_builds = { ios: nil, macos: nil }
   shared_version = if requested_version.nil?
     next_safe_auto_version(current_version)
   else
+    existing_builds = {
+      ios: fetch_existing_apple_build!(
+        bundle_id: IOS_BUNDLE,
+        platform: Spaceship::ConnectAPI::Platform::IOS,
+        version: requested_version,
+        build_number: shared_build_number,
+      ),
+      macos: fetch_existing_apple_build!(
+        bundle_id: MAC_BUNDLE,
+        platform: Spaceship::ConnectAPI::Platform::MAC_OS,
+        version: requested_version,
+        build_number: shared_build_number,
+      ),
+    }
+    validate_requested_store_version!(requested_version, existing_builds: existing_builds)
     requested_version
   end
 
@@ -421,78 +697,79 @@ lane :all_testflight do |options|
     UI.user_error!("Invalid version '#{shared_version}'. Use semantic version format x.y.z.")
   end
 
+  [IOS_BUNDLE, WATCH_BUNDLE, MAC_BUNDLE].each do |bundle_id|
+    ensure_icloud_capability!(bundle_id)
+  end
+
   persist_project_release_settings!(
     version: shared_version,
     build_number: shared_build_number,
   )
 
-  UI.message("Using shared build number #{shared_build_number} and version #{shared_version} for iOS, macOS, and watchOS.")
-
-  watch_embedded = ios_project_embeds_watch?
-
-  # Preflight watchOS before uploading anything so all_testflight cannot partially
-  # publish iOS/macOS while silently missing the watch app.
-  watchos_available = false
-  unless watch_embedded
-    watch_destinations, watch_status = xcodebuild_output(
-      "-showdestinations", "-scheme", "CortexOS-watchOS", "-project", PROJECT,
-    )
-    watchos_available = watch_status.success? &&
-                        watch_destinations.match?(/platform:watchOS[, ]/) &&
-                        !watch_destinations.include?("is not installed")
-  end
-
-  strict_watch = if options.key?(:strict_watch)
-    !["false", "0", "no"].include?(options[:strict_watch].to_s.strip.downcase)
-  else
-    true
-  end
+  UI.message("Using shared build number #{shared_build_number} and version #{shared_version} for iOS, embedded watchOS, and macOS.")
+  UI.user_error!("The iOS target must embed the watchOS app before all_testflight can publish.") unless ios_project_embeds_watch?
 
   shared_options = options.merge(
     build_number: shared_build_number,
     version: shared_version,
-    strict_watch: strict_watch,
   )
 
-  if watch_embedded
-    UI.message("watchOS app is embedded in the iOS archive — all_testflight will verify the iOS IPA includes Watch content.")
-  elsif watchos_available
-    UI.message("watchOS platform detected — will upload standalone watchOS build.")
-  elsif strict_watch
-    UI.user_error!(
-      "watchOS upload blocked before iOS/macOS upload: watchOS platform is not available. " \
-      "Install watchOS from Xcode > Settings > Components, then rerun `fastlane all_testflight`."
-    )
+  if resumable_apple_build?(existing_builds[:ios], platform_name: "iOS with embedded watchOS")
+    UI.success("iOS and embedded watchOS TestFlight delivery was already completed.")
   else
-    UI.important("watchOS platform not detected in this Xcode install — skipping watchOS upload.")
-    UI.important("Install watchOS from Xcode > Settings > Components to enable watchOS uploads.")
+    Fastlane::LaneManager.cruise_lane("ios", "testflight_release", shared_options)
+    UI.success("iOS and embedded watchOS TestFlight upload completed.")
   end
 
-  Fastlane::LaneManager.cruise_lane("ios", "testflight_release", shared_options)
-  verify_embedded_watch_ipa!(lane_context[SharedValues::IPA_OUTPUT_PATH]) if watch_embedded
-  UI.success("iOS TestFlight upload completed.")
-  Fastlane::LaneManager.cruise_lane("mac", "testflight_release", shared_options)
-  UI.success("macOS TestFlight upload completed.")
-  if watch_embedded
-    UI.success("watchOS TestFlight delivery completed through the embedded iOS app.")
+  if resumable_apple_build?(existing_builds[:macos], platform_name: "macOS")
+    UI.success("macOS TestFlight delivery was already completed.")
   else
-    watch_testflight(shared_options)
-    UI.success("watchOS TestFlight upload completed.")
+    Fastlane::LaneManager.cruise_lane("mac", "testflight_release", shared_options)
+    UI.success("macOS TestFlight upload completed.")
   end
 end
 
-desc "Regenerate App Store provisioning profiles (iOS app + widget)"
+desc "Regenerate App Store profiles for every Apple target using the local distribution certificate"
 lane :refresh_profiles do
+  [IOS_BUNDLE, WATCH_BUNDLE, MAC_BUNDLE].each do |bundle_id|
+    ensure_icloud_capability!(bundle_id)
+  end
+
   sigh(
     app_identifier: IOS_BUNDLE,
+    cert_id: DISTRIBUTION_CERT_ID,
+    provisioning_name: IOS_RELEASE_PROFILE,
+    force: true,
     skip_install: false,
-    skip_certificate_verification: true
+    skip_certificate_verification: false
   )
 
   sigh(
     app_identifier: WIDGET_BUNDLE,
+    cert_id: DISTRIBUTION_CERT_ID,
+    provisioning_name: WIDGET_RELEASE_PROFILE,
+    force: true,
     skip_install: false,
-    skip_certificate_verification: true
+    skip_certificate_verification: false
+  )
+
+  sigh(
+    app_identifier: WATCH_BUNDLE,
+    cert_id: DISTRIBUTION_CERT_ID,
+    provisioning_name: WATCH_RELEASE_PROFILE,
+    force: true,
+    skip_install: false,
+    skip_certificate_verification: false
+  )
+
+  sigh(
+    app_identifier: MAC_BUNDLE,
+    platform: "macos",
+    cert_id: DISTRIBUTION_CERT_ID,
+    provisioning_name: MAC_RELEASE_PROFILE,
+    force: true,
+    skip_install: false,
+    skip_certificate_verification: false
   )
 end
 

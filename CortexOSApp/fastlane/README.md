@@ -35,7 +35,7 @@ macOS TestFlight (alias)
 [bundle exec] fastlane watch_testflight
 ```
 
-watchOS TestFlight
+Build iOS with its embedded watchOS app and upload both to TestFlight
 
 ### all_testflight
 
@@ -43,7 +43,7 @@ watchOS TestFlight
 [bundle exec] fastlane all_testflight
 ```
 
-Build and upload iOS, macOS, and watchOS to TestFlight
+Publish one shared iOS/watchOS/macOS release with resumable platform uploads
 
 ### refresh_profiles
 
@@ -51,7 +51,7 @@ Build and upload iOS, macOS, and watchOS to TestFlight
 [bundle exec] fastlane refresh_profiles
 ```
 
-Regenerate App Store provisioning profiles (iOS app + widget)
+Regenerate App Store profiles for every Apple target using the local distribution certificate
 
 ### generate_store_assets
 
