@@ -32,10 +32,13 @@ The visible product stays simple:
 
 ## Trust
 
-- Semantic search and embeddings run on-device.
-- Source data stays on-device when the Server URL is empty; when configured,
-  source records and explicit feedback may sync to that endpoint.
-- Public content runs through redaction and quality checks.
+- Capture, priority ranking, Weekly Review, Decision Replay, newsletter drafting,
+  semantic search, and embeddings run on-device in the Apple apps.
+- Private cross-device state is compressed, encrypted with AES-GCM on-device,
+  and then synced through the user's iCloud account. Its key is delivered only
+  through iCloud Keychain. The Apple apps do not ship the Railway/API client and
+  do not send readable captures to a SimpliXio-operated or third-party app server.
+- Public content runs through on-device redaction and quality checks.
 - Private outreach stays `needs_approval` by default.
 - Human judgement stays in control.
 - Discord, newsletter, and acquisition outputs are draft-first unless explicitly approved.
@@ -76,15 +79,17 @@ make generate
 open CortexOSApp/CortexOS.xcodeproj
 ```
 
-Leave server URL empty in Settings to run fully offline.
+The iOS and macOS apps include a persistent, on-device semantic index for
+hybrid semantic and lexical search. It uses Apple Natural Language, Accelerate,
+and SQLite without bundling Python or FAISS. Core capture, prioritisation,
+review, newsletter drafting, and private iCloud sync do not require the Python
+service or Railway. See the
+[on-device semantic-search architecture](docs/semantic-memory-architecture.md).
 
-The iOS and macOS apps include a native ToucanDB runtime for persistent,
-on-device hybrid semantic and lexical search. It uses Apple Natural Language,
-Accelerate, and SQLite without bundling Python or FAISS; a backend is optional
-unless account sync, collaboration, or remote ingestion is required. See the
-[embedded semantic-memory architecture](docs/semantic-memory-architecture.md).
+## Optional Developer API
 
-## API
+The Python API is separate developer and automation tooling. It is not required
+or included in the iOS, macOS, or watchOS app binaries.
 
 Server runs on port `8420`.
 

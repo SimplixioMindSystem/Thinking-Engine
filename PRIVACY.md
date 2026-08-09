@@ -1,36 +1,72 @@
-# Privacy Policy — [SimpliXio](https://github.com/SimplixioMindSystem/)
+# SimpliXio Privacy Policy
 
-_Last updated: April 19, 2026_
+_Last updated: August 8, 2026_
 
-SimpliXio is designed with privacy as a core principle. We do **not** collect, store, or transmit any personal data to our servers or any third parties.
+SimpliXio is local-first and does not require a SimpliXio account or product
+server. Captures, ranking, semantic search, Weekly Review, Decision Replay, and
+newsletter safety checks run on the Apple device.
 
-## What Data Is Collected?
-- **No personal data is collected.**
-- All your notes, context, and usage data remain on your device.
-- If you use optional cloud features (e.g., LLM integration), your API keys and data are never sent to us.
+## Data SimpliXio Handles
 
-## Data Storage
-- All data is stored **locally** on your device.
-- You control your data at all times.
+The app may store information that you choose to enter, including:
+
+- notes and captured thoughts
+- profile context that helps rank priorities
+- decisions, insights, and feedback
+- generated priorities and review state
+
+SimpliXio does not use advertising identifiers, analytics SDKs, or tracking
+libraries.
+
+## Local Storage
+
+Your device is the source of truth. Captures save locally before any sync work,
+so the core app remains usable when iCloud is unavailable or private sync is
+disabled.
+
+## Private iCloud Sync
+
+Private iCloud sync is available across the signed SimpliXio apps for iPhone,
+Mac, and Apple Watch. Before source state enters iCloud storage, SimpliXio:
+
+1. compresses the payload on-device
+2. encrypts it on-device with AES-GCM
+3. stores the encryption key as a synchronizable iCloud Keychain item
+4. sends only authenticated ciphertext through the user's iCloud account
+
+The encryption key is shared only among SimpliXio apps signed by the same Apple
+developer team. SimpliXio does not operate a server that receives or can read
+this content. If iCloud or the private key is unavailable, changes remain local
+and the app retries without replacing unreadable cloud data.
+
+iCloud storage and iCloud Keychain are Apple services and are also governed by
+Apple's terms and privacy policy. You can disable private sync in SimpliXio
+Settings; existing local captures remain available on that device.
+
+## Public Output
+
+Newsletter and other public-safe drafts are generated and redacted on-device.
+SimpliXio does not publish them automatically. You must review and explicitly
+share any exported draft.
+
+## Optional Developer Tooling
+
+The public repository contains an optional Python API and integration examples
+for developers. Those tools are not included in the iOS, macOS, or watchOS app
+binaries. The shipping Apple apps do not depend on Railway or another product
+backend.
 
 ## Data Sharing
-- **No data is shared** with us or any third party.
-- We do not use analytics, advertising, or tracking libraries.
 
-## Third-Party Services
-- If you connect to third-party APIs (e.g., OpenAI, Anthropic), your data is subject to their privacy policies. SimpliXio does not transmit your data to any other service by default.
+SimpliXio does not sell user data. It does not send readable captures to
+SimpliXio, Railway, advertising networks, analytics providers, or external AI
+models.
 
 ## Children's Privacy
-- SimpliXio does not knowingly collect information from children under 13.
+
+SimpliXio does not knowingly collect personal information from children under
+13.
 
 ## Contact
-For any privacy questions, contact [Pierre-Henry](mailto:pierre@pierrehenry.dev)
 
----
-
-**Summary:**
-- No data leaves your device by default.
-- No analytics, ads, or tracking.
-- You are in full control of your data.
-
-© 2026 [Pierre-Henry Soria](https://pierrehenry.dev)
+For privacy questions, contact [Pierre-Henry Soria](mailto:pierre@pierrehenry.dev).

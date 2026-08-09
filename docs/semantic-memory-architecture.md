@@ -1,17 +1,22 @@
-# Embedded semantic memory
+# On-device semantic search
 
 SimpliXio uses an offline-first semantic index on iOS and macOS. Normal capture,
 indexing, and search do not require an account, network connection, or backend.
 
 ## Runtime design
 
-This is SimpliXio's native ToucanDB runtime. It preserves ToucanDB's persistent
-vector-search contract but uses Apple frameworks instead of bundling the Python,
-NumPy, SciPy, PyTorch, or FAISS distribution into the application.
+This is SimpliXio's native semantic-search implementation. It uses Apple
+frameworks instead of bundling Python, NumPy, SciPy, PyTorch, or FAISS into the
+application.
 
-- `OfflineStore` is the device-local source of truth and cache for notes. When a
-  server is configured, server snapshots are reconciled into it without deleting
-  captures that are still queued for upload.
+- `OfflineStore` is the device-local source of truth for notes, profile context,
+  decisions, insights, and feedback.
+- `ICloudSyncService` compresses the private source-state payload, encrypts it
+  on-device with AES-GCM, and syncs only authenticated ciphertext through the
+  user's iCloud account. The 256-bit key is a synchronizable iCloud Keychain
+  item shared only by signed SimpliXio targets. Per-record timestamps and
+  deletion tombstones keep edits deterministic and prevent deleted notes from
+  reappearing.
 - `SemanticMemoryStore` is a rebuildable derived index.
 - Apple's built-in `NLEmbedding` provides the sentence vectors; the runtime reads
   and persists the actual model revision and dimension instead of hard-coding it.
@@ -30,12 +35,10 @@ NumPy, SciPy, PyTorch, or FAISS distribution into the application.
 - The model identifier, revision, and dimension are stored with every vector.
   An OS model change therefore causes safe local re-embedding.
 
-Connected and offline search both use this embedded path. The server remains the
-synchronization authority, but normal queries do not incur network latency or send
-search text off-device. Server-created, updated, and deleted notes update the
-durable local cache immediately and enqueue ordered semantic-index maintenance. A
-complete server refresh removes stale server records while preserving pending
-local captures.
+All Apple-app search uses this embedded path. Queries do not incur network latency
+or send search text off-device. Source changes update the durable local store
+first and enqueue ordered semantic-index maintenance. iCloud synchronizes source
+records, never device-specific embedding vectors.
 
 Source-note persistence precedes derived-index scheduling. Index maintenance runs
 at utility priority, and operations are serialized so an older update cannot race
@@ -47,37 +50,43 @@ backfill: it uses the currently indexed records plus lexical results immediately
 
 Both note-search surfaces use a 250 ms cancellable debounce. SwiftUI cancels the
 superseded task as the query changes, and the engine also uses request generations
-so an older network or local result cannot overwrite a newer query. The iOS Review
+so an older local result cannot overwrite a newer query. The iOS Review
 notes segment and the macOS Notes workbench share the same search path.
 
-Settings exposes index availability, compatible record count, model dimension,
-local storage size, and a manual rebuild action on both platforms.
+Settings keeps private-search status simple and offers a recovery action when a
+fresh local index is needed.
 
 ## Privacy and data flow
 
-Search queries and Apple-generated embedding vectors remain on-device. Source
-records, profile fields, and explicit relevance feedback may be sent to the
-configured server for synchronization and personalization. Leave the Server URL
-empty to keep the workflow local-only.
+Search queries and Apple-generated embedding vectors remain on-device. When the
+user enables private sync, source records, profile fields, decisions, insights,
+and explicit relevance feedback synchronize through the user's iCloud account.
+Readable source state never enters iCloud key-value storage: encryption happens
+first, and a delayed or unavailable key leaves changes safely on the device
+instead of overwriting cloud state.
+The Apple app targets exclude the optional API client and upload queue, and the
+macOS app has no general network-client entitlement.
 
 The iOS/macOS and watchOS executables bundle valid `PrivacyInfo.xcprivacy`
-manifests. They disclose the applicable synced data types, declare no tracking,
-and document the approved reasons for app-local `UserDefaults` and semantic-index
-file metadata. Keep these manifests aligned with the product's actual data flow
-and App Store Connect privacy answers whenever sync behavior changes.
+manifests. They declare no developer collection or tracking and document the
+approved reasons for app-local `UserDefaults` and semantic-index file metadata.
+Keep these manifests aligned with the product's actual data flow and App Store
+Connect privacy answers whenever sync behavior changes.
 
-## Backend decision
+## Service boundary
 
-A backend is optional:
+The Apple apps do not require a product backend:
 
-- **No backend:** private, offline semantic search for data stored on one device.
-- **Optional backend:** account sync, collaboration, server-side ingestion, or a
-  corpus too large to keep on the device.
+- **On-device:** capture, ranking, search, Weekly Review, Decision Replay, and
+  public-safe newsletter drafting.
+- **Private iCloud:** source-state synchronization between iPhone, Mac, and Apple
+  Watch using AES-GCM ciphertext and an iCloud Keychain key, with a local-only
+  fallback when iCloud or its private key is unavailable.
+- **Optional Python tooling:** public-safe demos, integrations, and approved
+  automation outside the shipping Apple apps.
 
 Synchronize source records rather than Apple-generated vectors. Each device can
-rebuild its vectors using the locally available embedding revision. A server may
-use ToucanDB with a different embedding model because remote results are returned
-as ranked record IDs, not mixed directly into the local vector space.
+rebuild its local index using the embedding revision available on that device.
 
 ## Scale policy
 
@@ -100,3 +109,10 @@ corpora. Keep Python, PyTorch, and FAISS out of the application bundle.
 The watch target retains lexical search and conditionally compiles out the
 embedding, SQLite, and Accelerate implementation. This avoids unnecessary CPU,
 storage, binary linkage, and battery use on the watch.
+
+The current encrypted sync envelope is intentionally bounded below iCloud
+key-value storage's 1 MB quota. When a personal corpus no longer fits, SimpliXio
+keeps the complete local copy and reports that private sync needs attention; it
+does not truncate or silently discard captures. A future migration to encrypted
+CloudKit records can raise this ceiling without changing the local source of
+truth.
