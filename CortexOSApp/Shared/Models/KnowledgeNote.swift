@@ -52,7 +52,7 @@ struct KnowledgeNote: Codable, Identifiable, Hashable, Sendable {
 
 // MARK: - Create / Update DTOs
 
-struct NoteCreateRequest: Codable {
+struct NoteCreateRequest: Codable, Equatable {
     var title: String = ""
     var insight: String = ""
     var implication: String = ""
@@ -66,7 +66,7 @@ struct NoteCreateRequest: Codable {
     }
 }
 
-struct NoteUpdateRequest: Codable {
+struct NoteUpdateRequest: Codable, Equatable {
     var title: String?
     var insight: String?
     var implication: String?
@@ -74,6 +74,24 @@ struct NoteUpdateRequest: Codable {
     var sourceURL: String?
     var tags: [String]?
     var archived: Bool?
+
+    init(
+        title: String? = nil,
+        insight: String? = nil,
+        implication: String? = nil,
+        action: String? = nil,
+        sourceURL: String? = nil,
+        tags: [String]? = nil,
+        archived: Bool? = nil
+    ) {
+        self.title = title
+        self.insight = insight
+        self.implication = implication
+        self.action = action
+        self.sourceURL = sourceURL
+        self.tags = tags
+        self.archived = archived
+    }
 
     enum CodingKeys: String, CodingKey {
         case title, insight, implication, action, tags, archived

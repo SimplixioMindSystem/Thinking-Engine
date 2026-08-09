@@ -2,10 +2,8 @@
 //  CaptureQueue.swift
 //  CortexOS
 //
-//  Offline-first capture queue. Notes, decisions, and feedback
-//  are saved locally first, then flushed when connectivity returns.
-//
-//  "Capture must always work." — offline or not.
+//  Offline-first note mutations. Captures, edits, and removals are persisted
+//  locally before any network request, then delivered in their original order.
 //
 
 import Foundation
@@ -29,38 +27,44 @@ actor CaptureQueue {
         let capturedAt: Date
     }
 
-    struct QueuedNote: Codable, Identifiable {
+    struct QueuedNote: Codable, Identifiable, Equatable {
         let id: UUID
-        let title: String
-        let insight: String
-        let implication: String
-        let action: String
-        let sourceURL: String
-        let tags: [String]
+        let localNoteID: String?
+        var title: String
+        var insight: String
+        var implication: String
+        var action: String
+        var sourceURL: String
+        var tags: [String]
+        var archived: Bool
         let capturedAt: Date
 
         init(
             id: UUID = UUID(),
+            localNoteID: String? = nil,
             title: String,
             insight: String = "",
             implication: String = "",
             action: String = "",
             sourceURL: String = "",
             tags: [String] = [],
+            archived: Bool = false,
             capturedAt: Date = Date()
         ) {
             self.id = id
+            self.localNoteID = localNoteID
             self.title = title
             self.insight = insight
             self.implication = implication
             self.action = action
             self.sourceURL = sourceURL
             self.tags = tags
+            self.archived = archived
             self.capturedAt = capturedAt
         }
 
         enum CodingKeys: String, CodingKey {
-            case id, title, insight, implication, action, tags, capturedAt
+            case id, localNoteID, title, insight, implication, action, tags, archived, capturedAt
             case sourceURL = "source_url"
             case legacySourceURL = "sourceURL"
         }
@@ -68,6 +72,7 @@ actor CaptureQueue {
         init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             id = try container.decode(UUID.self, forKey: .id)
+            localNoteID = try container.decodeIfPresent(String.self, forKey: .localNoteID)
             title = try container.decode(String.self, forKey: .title)
             insight = try container.decodeIfPresent(String.self, forKey: .insight) ?? ""
             implication = try container.decodeIfPresent(String.self, forKey: .implication) ?? ""
@@ -76,19 +81,86 @@ actor CaptureQueue {
                 ?? container.decodeIfPresent(String.self, forKey: .legacySourceURL)
                 ?? ""
             tags = try container.decodeIfPresent([String].self, forKey: .tags) ?? []
+            archived = try container.decodeIfPresent(Bool.self, forKey: .archived) ?? false
             capturedAt = try container.decode(Date.self, forKey: .capturedAt)
         }
 
         func encode(to encoder: Encoder) throws {
             var container = encoder.container(keyedBy: CodingKeys.self)
             try container.encode(id, forKey: .id)
+            try container.encodeIfPresent(localNoteID, forKey: .localNoteID)
             try container.encode(title, forKey: .title)
             try container.encode(insight, forKey: .insight)
             try container.encode(implication, forKey: .implication)
             try container.encode(action, forKey: .action)
             try container.encode(sourceURL, forKey: .sourceURL)
             try container.encode(tags, forKey: .tags)
+            try container.encode(archived, forKey: .archived)
             try container.encode(capturedAt, forKey: .capturedAt)
+        }
+
+        mutating func apply(_ update: NoteUpdateRequest) {
+            title = update.title ?? title
+            insight = update.insight ?? insight
+            implication = update.implication ?? implication
+            action = update.action ?? action
+            sourceURL = update.sourceURL ?? sourceURL
+            tags = update.tags ?? tags
+            archived = update.archived ?? archived
+        }
+
+        var createRequest: NoteCreateRequest {
+            NoteCreateRequest(
+                title: title,
+                insight: insight,
+                implication: implication,
+                action: action,
+                sourceURL: sourceURL,
+                tags: tags
+            )
+        }
+
+        func updateRequired(afterCreate serverNote: KnowledgeNote) -> NoteUpdateRequest? {
+            let update = NoteUpdateRequest(
+                title: title == serverNote.title ? nil : title,
+                insight: insight == serverNote.insight ? nil : insight,
+                implication: implication == serverNote.implication ? nil : implication,
+                action: action == serverNote.action ? nil : action,
+                sourceURL: sourceURL == serverNote.sourceURL ? nil : sourceURL,
+                tags: tags == serverNote.tags ? nil : tags,
+                archived: archived == serverNote.archived ? nil : archived
+            )
+            return update.isEmpty ? nil : update
+        }
+    }
+
+    enum NoteMutationOperation: String, Codable, Equatable {
+        case update
+        case delete
+    }
+
+    struct QueuedNoteMutation: Codable, Identifiable, Equatable {
+        let id: UUID
+        let noteID: String
+        let title: String
+        let operation: NoteMutationOperation
+        var update: NoteUpdateRequest?
+        let capturedAt: Date
+
+        init(
+            id: UUID = UUID(),
+            noteID: String,
+            title: String,
+            operation: NoteMutationOperation,
+            update: NoteUpdateRequest? = nil,
+            capturedAt: Date = Date()
+        ) {
+            self.id = id
+            self.noteID = noteID
+            self.title = title
+            self.operation = operation
+            self.update = update
+            self.capturedAt = capturedAt
         }
     }
 
@@ -112,15 +184,17 @@ actor CaptureQueue {
     // MARK: - State
 
     private var notes: [QueuedNote] = []
+    private var noteMutations: [QueuedNoteMutation] = []
     private var decisions: [QueuedDecision] = []
     private var feedback: [QueuedFeedback] = []
 
     private let notesURL: URL
+    private let noteMutationsURL: URL
     private let decisionsURL: URL
     private let feedbackURL: URL
 
-    private init() {
-        let support = FileManager.default.urls(
+    init(storageDirectory: URL? = nil) {
+        let support = storageDirectory ?? FileManager.default.urls(
             for: .applicationSupportDirectory,
             in: .userDomainMask
         )[0].appendingPathComponent("CortexOS", isDirectory: true)
@@ -131,20 +205,22 @@ actor CaptureQueue {
         )
 
         notesURL = support.appendingPathComponent("capture_queue_notes.json")
+        noteMutationsURL = support.appendingPathComponent("capture_queue_note_mutations.json")
         decisionsURL = support.appendingPathComponent("capture_queue_decisions.json")
         feedbackURL = support.appendingPathComponent("capture_queue_feedback.json")
 
-        // Load persisted queues
         if let data = try? Data(contentsOf: notesURL),
            let saved = try? JSONDecoder().decode([QueuedNote].self, from: data) {
             notes = saved
         }
-
+        if let data = try? Data(contentsOf: noteMutationsURL),
+           let saved = try? JSONDecoder().decode([QueuedNoteMutation].self, from: data) {
+            noteMutations = saved
+        }
         if let data = try? Data(contentsOf: decisionsURL),
            let saved = try? JSONDecoder().decode([QueuedDecision].self, from: data) {
             decisions = saved
         }
-
         if let data = try? Data(contentsOf: feedbackURL),
            let saved = try? JSONDecoder().decode([QueuedFeedback].self, from: data) {
             feedback = saved
@@ -154,6 +230,7 @@ actor CaptureQueue {
     // MARK: - Enqueue
 
     func enqueueNote(
+        localNoteID: String? = nil,
         title: String,
         insight: String = "",
         implication: String = "",
@@ -161,16 +238,87 @@ actor CaptureQueue {
         sourceURL: String = "",
         tags: [String] = []
     ) {
-        let item = QueuedNote(
-            title: title,
-            insight: insight,
-            implication: implication,
-            action: action,
-            sourceURL: sourceURL,
-            tags: tags
+        notes.append(
+            QueuedNote(
+                localNoteID: localNoteID,
+                title: title,
+                insight: insight,
+                implication: implication,
+                action: action,
+                sourceURL: sourceURL,
+                tags: tags
+            )
         )
-        notes.append(item)
         persistNotes()
+    }
+
+    /// Absorbs changes into a pending create instead of sending a patch for an
+    /// ID the server has not issued yet.
+    func updatePendingNote(localNoteID: String, with update: NoteUpdateRequest) -> Bool {
+        guard let index = notes.lastIndex(where: { $0.localNoteID == localNoteID }) else {
+            return false
+        }
+        notes[index].apply(update)
+        persistNotes()
+        return true
+    }
+
+    /// A locally created note can be removed before it ever reaches the
+    /// server, so no deletion request is necessary.
+    func cancelPendingNote(localNoteID: String) -> Bool {
+        let originalCount = notes.count
+        notes.removeAll { $0.localNoteID == localNoteID }
+        guard notes.count != originalCount else { return false }
+        persistNotes()
+        return true
+    }
+
+    func enqueueNoteUpdate(
+        noteID: String,
+        title: String,
+        with update: NoteUpdateRequest
+    ) {
+        guard !update.isEmpty else { return }
+        guard !noteMutations.contains(where: {
+            $0.noteID == noteID && $0.operation == .delete
+        }) else {
+            return
+        }
+
+        if let index = noteMutations.lastIndex(where: {
+            $0.noteID == noteID && $0.operation == .update
+        }) {
+            noteMutations[index].update = merged(
+                noteMutations[index].update,
+                with: update
+            )
+        } else {
+            noteMutations.append(
+                QueuedNoteMutation(
+                    noteID: noteID,
+                    title: title,
+                    operation: .update,
+                    update: update
+                )
+            )
+        }
+        persistNoteMutations()
+    }
+
+    func enqueueNoteDeletion(noteID: String, title: String) {
+        noteMutations.removeAll {
+            $0.noteID == noteID && $0.operation == .update
+        }
+        guard !noteMutations.contains(where: {
+            $0.noteID == noteID && $0.operation == .delete
+        }) else {
+            persistNoteMutations()
+            return
+        }
+        noteMutations.append(
+            QueuedNoteMutation(noteID: noteID, title: title, operation: .delete)
+        )
+        persistNoteMutations()
     }
 
     func enqueueDecision(
@@ -179,108 +327,140 @@ actor CaptureQueue {
         project: String = "",
         assumptions: [String] = []
     ) {
-        let item = QueuedDecision(
-            id: UUID(),
-            decision: decision,
-            reason: reason,
-            project: project,
-            assumptions: assumptions,
-            capturedAt: Date()
+        decisions.append(
+            QueuedDecision(
+                id: UUID(),
+                decision: decision,
+                reason: reason,
+                project: project,
+                assumptions: assumptions,
+                capturedAt: Date()
+            )
         )
-        decisions.append(item)
         persistDecisions()
     }
 
     func enqueueFeedback(item: String, useful: Bool, acted: Bool? = nil) {
         let cleaned = item.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleaned.isEmpty else { return }
-
-        let queued = QueuedFeedback(
-            id: UUID(),
-            item: cleaned,
-            useful: useful,
-            acted: acted,
-            capturedAt: Date()
+        feedback.append(
+            QueuedFeedback(
+                id: UUID(),
+                item: cleaned,
+                useful: useful,
+                acted: acted,
+                capturedAt: Date()
+            )
         )
-        feedback.append(queued)
         persistFeedback()
     }
 
-    // MARK: - Flush (send to server)
+    // MARK: - Flush
 
     @MainActor
     func flushNotes(using api: APIService) async -> Int {
-        let queued = await getQueuedNotes()
-        guard !queued.isEmpty else { return 0 }
-
-        var remaining: [QueuedNote] = []
+        let queued = await queuedNotes()
         var flushed = 0
 
         for item in queued {
-            let request = NoteCreateRequest(
-                title: item.title,
-                insight: item.insight,
-                implication: item.implication,
-                action: item.action,
-                sourceURL: item.sourceURL,
-                tags: item.tags
-            )
-
             do {
-                _ = try await api.createNoteRemote(request)
-                await OfflineStore.shared.removeMirroredNote(
-                    title: item.title,
-                    sourceURL: item.sourceURL
-                )
+                let serverNote = try await api.createNoteRemote(item.createRequest)
+                guard let current = await completeQueuedCreate(item) else {
+                    // The local note was deleted while its create was in flight.
+                    await OfflineStore.shared.deleteNote(id: serverNote.id)
+                    await enqueueNoteDeletion(noteID: serverNote.id, title: serverNote.title)
+                    continue
+                }
+
+                let followUp = current.updateRequired(afterCreate: serverNote)
+                if current.localNoteID == nil {
+                    // Queues written by older versions did not record local IDs.
+                    await OfflineStore.shared.removeMirroredNote(
+                        title: current.title,
+                        sourceURL: current.sourceURL
+                    )
+                } else {
+                    await OfflineStore.shared.reconcileQueuedNoteUpload(
+                        localNoteID: current.localNoteID,
+                        serverNote: serverNote,
+                        preserveLocalEdits: followUp != nil
+                    )
+                }
+                if let followUp {
+                    await enqueueNoteUpdate(
+                        noteID: serverNote.id,
+                        title: current.title,
+                        with: followUp
+                    )
+                }
                 flushed += 1
             } catch {
-                remaining.append(item)
+                // Keep the persisted item unchanged so the next explicit sync
+                // attempt can retry it without losing local work.
             }
         }
 
-        await setQueuedNotes(remaining)
+        let flushedMutations = await flushNoteMutations(using: api)
+        return flushed + flushedMutations
+    }
+
+    @MainActor
+    private func flushNoteMutations(using api: APIService) async -> Int {
+        let queued = await queuedNoteMutations()
+        var flushed = 0
+
+        for item in queued {
+            do {
+                switch item.operation {
+                case .update:
+                    guard let update = item.update else { continue }
+                    _ = try await api.updateNoteRemote(id: item.noteID, update)
+                case .delete:
+                    try await api.deleteNoteRemote(id: item.noteID)
+                }
+                if await completeNoteMutation(item) {
+                    flushed += 1
+                }
+            } catch {
+                // The operation remains in order for a later retry.
+            }
+        }
         return flushed
     }
 
     @MainActor
     func flushDecisions(using api: APIService) async -> Int {
-        let queued = await getQueuedDecisions()
-        guard !queued.isEmpty else { return 0 }
-
-        var remaining: [QueuedDecision] = []
+        let queued = await queuedDecisions()
         var flushed = 0
 
         for item in queued {
-            let request = DecisionCreateRequest(
-                decision: item.decision,
-                reason: item.reason,
-                project: item.project,
-                assumptions: item.assumptions
-            )
-
             do {
-                _ = try await api.recordDecisionRemote(request)
-                await OfflineStore.shared.removeMirroredDecision(
-                    decision: item.decision,
-                    reason: item.reason,
-                    project: item.project
+                _ = try await api.recordDecisionRemote(
+                    DecisionCreateRequest(
+                        decision: item.decision,
+                        reason: item.reason,
+                        project: item.project,
+                        assumptions: item.assumptions
+                    )
                 )
-                flushed += 1
+                if await completeDecision(item) {
+                    await OfflineStore.shared.removeMirroredDecision(
+                        decision: item.decision,
+                        reason: item.reason,
+                        project: item.project
+                    )
+                    flushed += 1
+                }
             } catch {
-                remaining.append(item)
+                // Keep the persisted item for a later retry.
             }
         }
-
-        await setQueuedDecisions(remaining)
         return flushed
     }
 
     @MainActor
     func flushFeedback(using api: APIService) async -> Int {
-        let queued = await getQueuedFeedback()
-        guard !queued.isEmpty else { return 0 }
-
-        var remaining: [QueuedFeedback] = []
+        let queued = await queuedFeedback()
         var flushed = 0
 
         for item in queued {
@@ -288,29 +468,29 @@ actor CaptureQueue {
                 try await api.sendFeedbackRemote(
                     FeedbackRequest(item: item.item, useful: item.useful, acted: item.acted)
                 )
-                flushed += 1
+                if await completeFeedback(item) {
+                    flushed += 1
+                }
             } catch {
-                remaining.append(item)
+                // Keep the persisted item for a later retry.
             }
         }
-
-        await setQueuedFeedback(remaining)
         return flushed
     }
 
     // MARK: - Counts
 
-    var pendingNoteCount: Int { notes.count }
+    var pendingNoteCount: Int { notes.count + noteMutations.count }
     var pendingDecisionCount: Int { decisions.count }
     var pendingFeedbackCount: Int { feedback.count }
-    var totalPending: Int { notes.count + decisions.count + feedback.count }
+    var totalPending: Int { pendingNoteCount + decisions.count + feedback.count }
 
     func pendingCounts() -> PendingQueueCounts {
         PendingQueueCounts(
-            notes: notes.count,
+            notes: pendingNoteCount,
             decisions: decisions.count,
             feedback: feedback.count,
-            total: notes.count + decisions.count + feedback.count
+            total: totalPending
         )
     }
 
@@ -318,9 +498,17 @@ actor CaptureQueue {
         let noteActions = notes.map {
             PendingAction(
                 id: "note-\($0.id.uuidString)",
-                kind: "Note",
+                kind: "Capture",
                 title: $0.title,
                 capturedAt: $0.capturedAt
+            )
+        }
+        let mutationActions = noteMutations.map { mutation in
+            PendingAction(
+                id: "note-mutation-\(mutation.id.uuidString)",
+                kind: mutation.operation == .delete ? "Note removal" : "Note update",
+                title: mutation.title,
+                capturedAt: mutation.capturedAt
             )
         }
         let decisionActions = decisions.map {
@@ -340,7 +528,7 @@ actor CaptureQueue {
             )
         }
 
-        return (noteActions + decisionActions + feedbackActions)
+        return (noteActions + mutationActions + decisionActions + feedbackActions)
             .sorted { $0.capturedAt > $1.capturedAt }
             .prefix(max(1, limit))
             .map { $0 }
@@ -348,23 +536,61 @@ actor CaptureQueue {
 
     // MARK: - Actor-isolated helpers
 
-    private func getQueuedNotes() -> [QueuedNote] { notes }
-    private func getQueuedDecisions() -> [QueuedDecision] { decisions }
-    private func getQueuedFeedback() -> [QueuedFeedback] { feedback }
+    private func queuedNotes() -> [QueuedNote] { notes }
+    private func queuedNoteMutations() -> [QueuedNoteMutation] { noteMutations }
+    private func queuedDecisions() -> [QueuedDecision] { decisions }
+    private func queuedFeedback() -> [QueuedFeedback] { feedback }
 
-    private func setQueuedNotes(_ value: [QueuedNote]) {
-        notes = value
+    private func completeQueuedCreate(_ sent: QueuedNote) -> QueuedNote? {
+        guard let index = notes.firstIndex(where: { $0.id == sent.id }) else {
+            return nil
+        }
+        let current = notes.remove(at: index)
         persistNotes()
+        return current
     }
 
-    private func setQueuedDecisions(_ value: [QueuedDecision]) {
-        decisions = value
+    private func completeNoteMutation(_ sent: QueuedNoteMutation) -> Bool {
+        guard let index = noteMutations.firstIndex(where: { $0.id == sent.id }),
+              noteMutations[index] == sent else {
+            return false
+        }
+        noteMutations.remove(at: index)
+        persistNoteMutations()
+        return true
+    }
+
+    private func completeDecision(_ sent: QueuedDecision) -> Bool {
+        guard let index = decisions.firstIndex(where: { $0.id == sent.id }) else {
+            return false
+        }
+        decisions.remove(at: index)
         persistDecisions()
+        return true
     }
 
-    private func setQueuedFeedback(_ value: [QueuedFeedback]) {
-        feedback = value
+    private func completeFeedback(_ sent: QueuedFeedback) -> Bool {
+        guard let index = feedback.firstIndex(where: { $0.id == sent.id }) else {
+            return false
+        }
+        feedback.remove(at: index)
         persistFeedback()
+        return true
+    }
+
+    private func merged(
+        _ existing: NoteUpdateRequest?,
+        with newer: NoteUpdateRequest
+    ) -> NoteUpdateRequest {
+        NoteUpdateRequest(
+            title: newer.title ?? existing?.title,
+            insight: newer.insight ?? existing?.insight,
+            implication: newer.implication ?? existing?.implication,
+            action: newer.action ?? existing?.action,
+            sourceURL: newer.sourceURL ?? existing?.sourceURL,
+            tags: newer.tags ?? existing?.tags,
+            archived: newer.archived ?? existing?.archived
+        )
     }
 
     // MARK: - Persistence
@@ -372,6 +598,11 @@ actor CaptureQueue {
     private func persistNotes() {
         guard let data = try? JSONEncoder().encode(notes) else { return }
         try? data.write(to: notesURL, options: .atomic)
+    }
+
+    private func persistNoteMutations() {
+        guard let data = try? JSONEncoder().encode(noteMutations) else { return }
+        try? data.write(to: noteMutationsURL, options: .atomic)
     }
 
     private func persistDecisions() {
@@ -382,5 +613,17 @@ actor CaptureQueue {
     private func persistFeedback() {
         guard let data = try? JSONEncoder().encode(feedback) else { return }
         try? data.write(to: feedbackURL, options: .atomic)
+    }
+}
+
+private extension NoteUpdateRequest {
+    var isEmpty: Bool {
+        title == nil &&
+            insight == nil &&
+            implication == nil &&
+            action == nil &&
+            sourceURL == nil &&
+            tags == nil &&
+            archived == nil
     }
 }

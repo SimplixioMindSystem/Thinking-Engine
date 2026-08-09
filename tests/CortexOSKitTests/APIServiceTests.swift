@@ -158,6 +158,12 @@ final class APIServiceInitTests: XCTestCase {
         XCTAssertEqual(service.baseURL, "http://test:9999")
     }
 
+    func testNewInstallDefaultsToLocalOnly() {
+        let service = APIService(baseURL: "")
+        XCTAssertEqual(APIService.defaultServerURL, "")
+        XCTAssertTrue(service.isOffline)
+    }
+
     func testConnectedSearchHydratesOnceThenQueriesOnlyTheEmbeddedStore() async throws {
         let note = KnowledgeNote(
             id: "server-note",

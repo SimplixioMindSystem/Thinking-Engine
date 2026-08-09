@@ -2,8 +2,8 @@
 //  APIService.swift
 //  CortexOS
 //
-//  Networking layer that talks to the CortexOS Python API server.
-//  Uses async/await and Codable for clean Swift concurrency.
+//  Optional developer API adapter. Shipping Apple targets exclude this file;
+//  tests and explicit developer tooling can still exercise the Python API.
 //
 
 import Foundation
@@ -54,7 +54,9 @@ extension OfflineStore: NoteStoreProviding {}
 @MainActor
 final class APIService: ObservableObject {
     static let serverURLDefaultsKey = "cortex_api_url"
-    static let defaultServerURL = "https://cortex-thinking-engine-production.up.railway.app"
+    // Developer tooling must supply an endpoint explicitly. The shipping apps
+    // use encrypted iCloud sync and do not expose a server setting.
+    static let defaultServerURL = ""
 
     @Published var baseURL: String {
         didSet {
@@ -207,6 +209,23 @@ final class APIService: ObservableObject {
         return note
     }
 
+    func updateNoteRemote(id: String, _ body: NoteUpdateRequest) async throws -> KnowledgeNote {
+        let note: KnowledgeNote = try await request("PATCH", path: "/notes/\(id)", body: body)
+        await noteStore.cacheServerNote(
+            note,
+            sourceIdentifier: serverCacheIdentifier
+        )
+        return note
+    }
+
+    func deleteNoteRemote(id: String) async throws {
+        try await requestNoContent("DELETE", path: "/notes/\(id)")
+        await noteStore.removeCachedServerNote(
+            id: id,
+            sourceIdentifier: serverCacheIdentifier
+        )
+    }
+
     func listNotes(includeArchived: Bool = false) async throws -> [KnowledgeNote] {
         if isOffline {
             return await noteStore.listNotes(includeArchived: includeArchived)
@@ -252,6 +271,7 @@ final class APIService: ObservableObject {
         if isOffline {
             let local = await noteStore.createNote(body)
             await CaptureQueue.shared.enqueueNote(
+                localNoteID: local.id,
                 title: body.title,
                 insight: body.insight,
                 implication: body.implication,
@@ -266,6 +286,7 @@ final class APIService: ObservableObject {
         } catch {
             let local = await noteStore.createNote(body)
             await CaptureQueue.shared.enqueueNote(
+                localNoteID: local.id,
                 title: body.title,
                 insight: body.insight,
                 implication: body.implication,
@@ -278,18 +299,22 @@ final class APIService: ObservableObject {
     }
 
     func updateNote(id: String, _ body: NoteUpdateRequest) async throws -> KnowledgeNote {
-        if isOffline, let note = await noteStore.updateNote(id: id, with: body) {
-            return note
+        if isOffline {
+            if let local = await persistLocalNoteUpdate(id: id, body: body) {
+                return local
+            }
+            throw APIError.networkError(
+                NSError(
+                    domain: NSURLErrorDomain,
+                    code: -1009,
+                    userInfo: [NSLocalizedDescriptionKey: "This note is not available on this device."]
+                )
+            )
         }
         do {
-            let note: KnowledgeNote = try await request("PATCH", path: "/notes/\(id)", body: body)
-            await noteStore.cacheServerNote(
-                note,
-                sourceIdentifier: serverCacheIdentifier
-            )
-            return note
+            return try await updateNoteRemote(id: id, body)
         } catch {
-            if let note = await noteStore.updateNote(id: id, with: body) {
+            if let note = await persistLocalNoteUpdate(id: id, body: body) {
                 return note
             }
             throw error
@@ -298,17 +323,46 @@ final class APIService: ObservableObject {
 
     func deleteNote(id: String) async throws {
         if isOffline {
-            await noteStore.deleteNote(id: id)
+            await persistLocalNoteDeletion(id: id)
             return
         }
         do {
-            try await requestNoContent("DELETE", path: "/notes/\(id)")
-            await noteStore.removeCachedServerNote(
-                id: id,
-                sourceIdentifier: serverCacheIdentifier
-            )
+            try await deleteNoteRemote(id: id)
         } catch {
-            await noteStore.deleteNote(id: id)
+            await persistLocalNoteDeletion(id: id)
+        }
+    }
+
+    private func persistLocalNoteUpdate(
+        id: String,
+        body: NoteUpdateRequest
+    ) async -> KnowledgeNote? {
+        guard let local = await noteStore.updateNote(id: id, with: body) else {
+            return nil
+        }
+
+        let updatedPendingCapture = await CaptureQueue.shared.updatePendingNote(
+            localNoteID: id,
+            with: body
+        )
+        if !updatedPendingCapture {
+            await CaptureQueue.shared.enqueueNoteUpdate(
+                noteID: id,
+                title: local.title,
+                with: body
+            )
+        }
+        return local
+    }
+
+    private func persistLocalNoteDeletion(id: String) async {
+        let title = await noteStore.getNote(id: id)?.title ?? "Saved capture"
+        await noteStore.deleteNote(id: id)
+        let removedPendingCapture = await CaptureQueue.shared.cancelPendingNote(
+            localNoteID: id
+        )
+        if !removedPendingCapture {
+            await CaptureQueue.shared.enqueueNoteDeletion(noteID: id, title: title)
         }
     }
 
