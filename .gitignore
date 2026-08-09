@@ -77,6 +77,7 @@ CortexOSApp/SimpliXio.app/
 CortexOSApp/fastlane/report.xml
 CortexOSApp/generate_icons.py
 CortexOSApp/*.mobileprovision
+CortexOSApp/*.provisionprofile
 
 # Local runtime artifacts
 .cortexos_local/
