@@ -1,7 +1,7 @@
 {
-  "generated_at_epoch": 1777434935,
-  "generated_at_utc": "2026-04-29T03:55:35Z",
-  "app_marketing_version": "1.1.2",
+  "generated_at_epoch": 1788088080,
+  "generated_at_utc": "2026-08-30T11:08:00Z",
+  "app_marketing_version": "1.9.3",
   "strict_raw_fallback_disabled": true,
   "max_raw_age_hours": 168.0,
   "devices": {
@@ -11,6 +11,6 @@
     "iPhone_5.5": 4,
     "iPad_13": 4,
     "iPad_12.9": 4,
-    "Mac": 5
+    "Mac": 6
   }
 }

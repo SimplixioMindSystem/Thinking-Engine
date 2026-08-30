@@ -19,8 +19,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.9"
-    MARKETING_VERSION: "1.9.2"
-    CURRENT_PROJECT_VERSION: "20260809002904"
+    MARKETING_VERSION: "1.9.3"
+    CURRENT_PROJECT_VERSION: "20260830105829"
     CODE_SIGN_STYLE: Automatic
     # Fastlane injects private release profile names through xcargs.
     SIMPLIXIO_IOS_PROFILE: ""
