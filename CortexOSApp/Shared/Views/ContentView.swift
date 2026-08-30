@@ -10,6 +10,9 @@
 //
 
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 
 struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
@@ -225,6 +228,10 @@ struct ContentView: View {
         }
         .environmentObject(engine)
         .frame(minWidth: 800, minHeight: 500)
+        .background {
+            ScreenshotWindowConfigurator()
+                .frame(width: 0, height: 0)
+        }
         .task {
             await engine.sync()
         }
@@ -393,6 +400,49 @@ struct ContentView: View {
     }
     #endif
 }
+
+#if os(macOS)
+private struct ScreenshotWindowConfigurator: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView(frame: .zero)
+        configureWindow(for: view)
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        configureWindow(for: nsView)
+    }
+
+    private func configureWindow(for view: NSView) {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard arguments.contains("-UITests"), arguments.contains("-Screenshots") else {
+            return
+        }
+
+        DispatchQueue.main.async {
+            guard let window = view.window,
+                  let screen = window.screen ?? NSScreen.main else {
+                return
+            }
+
+            let availableFrame = screen.visibleFrame.insetBy(dx: 24, dy: 24)
+            let size = NSSize(
+                width: min(1_000, availableFrame.width),
+                height: min(700, availableFrame.height)
+            )
+            let targetFrame = NSRect(
+                x: availableFrame.midX - size.width / 2,
+                y: availableFrame.midY - size.height / 2,
+                width: size.width,
+                height: size.height
+            )
+
+            guard !NSEqualRects(window.frame, targetFrame) else { return }
+            window.setFrame(targetFrame, display: true, animate: false)
+        }
+    }
+}
+#endif
 
 #Preview {
     ContentView()

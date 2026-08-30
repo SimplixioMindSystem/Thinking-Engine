@@ -12,6 +12,8 @@ scripts/*
 !scripts/generate_store_assets.py
 !scripts/generate_marketing_screenshots.py
 !scripts/generate_app_icon.sh
+!scripts/capture_screenshots.sh
+!scripts/macos_window_id.swift
 
 # Secrets & environment
 .env*

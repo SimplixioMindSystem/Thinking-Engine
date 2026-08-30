@@ -43,6 +43,14 @@ final class ScreenshotTests: XCTestCase {
         try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
     }
 
+    override func tearDownWithError() throws {
+#if os(macOS)
+        if app.state != .notRunning {
+            app.terminate()
+        }
+#endif
+    }
+
     @discardableResult
     private func captureWindow(_ name: String) -> XCUIScreenshot {
         let screenshot: XCUIScreenshot
@@ -75,6 +83,17 @@ final class ScreenshotTests: XCTestCase {
     func testCaptureFocusTab() throws {
         // Focus tab is the default landing screen
         captureWindow("01_focus")
+    }
+
+    func testCapturePriorityDetail() throws {
+        let topPriority = app.buttons["focus.top-priority"].firstMatch
+        XCTAssertTrue(topPriority.waitForExistence(timeout: 5))
+        XCTAssertTrue(topPriority.isHittable)
+        topPriority.tap()
+
+        XCTAssertTrue(app.staticTexts["Why this matters"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Next action"].waitForExistence(timeout: 5))
+        captureWindow("02_decide")
     }
 
     func testFocusContentRemainsScrollable() throws {
@@ -125,19 +144,19 @@ final class ScreenshotTests: XCTestCase {
     }
 
     func testCaptureCaptureTab() throws {
-        // Tap the Capture tab
-        let captureTab = app.tabBars.buttons["Capture"]
-        XCTAssertTrue(captureTab.waitForExistence(timeout: 5))
-        captureTab.tap()
+        // TabView becomes a sidebar on iPad, so query the adaptive button directly.
+        let captureDestination = app.buttons["Capture"].firstMatch
+        XCTAssertTrue(captureDestination.waitForExistence(timeout: 5))
+        captureDestination.tap()
         sleep(1)
 
         captureWindow("03_capture")
     }
 
     func testCaptureEditorKeepsFocusAndAcceptsWriting() throws {
-        let captureTab = app.tabBars.buttons["Capture"]
-        XCTAssertTrue(captureTab.waitForExistence(timeout: 5))
-        captureTab.tap()
+        let captureDestination = app.buttons["Capture"].firstMatch
+        XCTAssertTrue(captureDestination.waitForExistence(timeout: 5))
+        captureDestination.tap()
 
         let editor = app.textViews.firstMatch
         XCTAssertTrue(editor.waitForExistence(timeout: 5))
@@ -224,13 +243,13 @@ final class ScreenshotTests: XCTestCase {
     func testCaptureWeeklyReviewSidebar() throws {
         launchMacApp(sectionID: "weeklyReview")
         XCTAssertTrue(app.staticTexts["Top Repeated Priorities"].waitForExistence(timeout: 5))
-        captureWindow("03_weekly_review")
+        captureWindow("02_weekly_review")
     }
 
     func testCaptureDecisionReplaySidebar() throws {
         launchMacApp(sectionID: "decisionReplay")
         XCTAssertTrue(app.staticTexts["Final Priorities"].waitForExistence(timeout: 5))
-        captureWindow("04_decision_replay")
+        captureWindow("03_decision_replay")
     }
 
     func testCaptureNewsletterSidebar() throws {
