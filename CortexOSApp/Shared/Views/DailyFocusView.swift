@@ -496,6 +496,11 @@ private struct HeroPriorityCard: View {
         .cortexShadow()
         .contentShape(Rectangle())
         .onTapGesture(perform: onOpen)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Top priority: \(priority.title)")
+        .accessibilityHint("Opens priority details")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("focus.top-priority")
         #if os(iOS)
         .contextMenu {
             Button(role: .destructive) { onDismiss() } label: {
