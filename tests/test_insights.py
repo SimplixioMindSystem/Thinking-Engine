@@ -1,6 +1,5 @@
 """Tests for structured Insight objects and InsightStore."""
 
-
 import pytest
 
 from cortex_core.insights import (
@@ -73,10 +72,7 @@ class TestInsightStore:
 
     def test_batch_add(self, store_path):
         store = InsightStore(store_path)
-        insights = [
-            Insight(title=f"Insight {i}", summary=f"Summary {i}")
-            for i in range(5)
-        ]
+        insights = [Insight(title=f"Insight {i}", summary=f"Summary {i}") for i in range(5)]
         store.add_batch(insights)
         assert store.count == 5
 

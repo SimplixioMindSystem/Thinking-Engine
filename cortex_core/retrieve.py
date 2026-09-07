@@ -128,15 +128,17 @@ class HybridRetriever:
             if phrase_bonus:
                 reasons.append("exact_phrase")
 
-            results.append(RetrievalResult(
-                id=item.get("id", ""),
-                title=title,
-                content=content,
-                source_type=item.get("source_type", ""),
-                tags=item.get("tags", []),
-                score=min(score, 1.0),
-                match_reasons=reasons,
-            ))
+            results.append(
+                RetrievalResult(
+                    id=item.get("id", ""),
+                    title=title,
+                    content=content,
+                    source_type=item.get("source_type", ""),
+                    tags=item.get("tags", []),
+                    score=min(score, 1.0),
+                    match_reasons=reasons,
+                )
+            )
 
         # Layer 3: Recency weighting
         results = self._recency_weight(results, filtered)
@@ -162,24 +164,20 @@ class HybridRetriever:
 
         if tags:
             tag_set = {t.lower() for t in tags}
-            filtered = [
-                i for i in filtered if tag_set & {t.lower() for t in i.get("tags", [])}
-            ]
+            filtered = [i for i in filtered if tag_set & {t.lower() for t in i.get("tags", [])}]
 
         if project:
             project_lower = project.lower()
             filtered = [
-                i for i in filtered
+                i
+                for i in filtered
                 if project_lower in i.get("related_project", "").lower()
                 or project_lower in " ".join(i.get("tags", [])).lower()
             ]
 
         if recency_days is not None:
             cutoff = (datetime.now(UTC) - timedelta(days=recency_days)).isoformat()
-            filtered = [
-                i for i in filtered
-                if i.get("created_at", i.get("ingested_at", "")) >= cutoff
-            ]
+            filtered = [i for i in filtered if i.get("created_at", i.get("ingested_at", "")) >= cutoff]
 
         return filtered
 

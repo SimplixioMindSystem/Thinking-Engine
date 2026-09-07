@@ -59,4 +59,3 @@ class NotionSync:
             "signals": [],
             "context_items": context_items,
         }
-

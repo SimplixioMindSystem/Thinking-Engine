@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -31,7 +32,7 @@ class IntegrationRepository:
                     "last_sync": dict(loaded.get("last_sync", {})),
                 }
             except Exception:
-                pass
+                logging.getLogger(__name__).warning("Cannot read integration state; starting with empty sync metadata")
         return {"seen": {}, "cursors": {}, "last_sync": {}}
 
     def _seen_set(self, source: str) -> set[str]:
@@ -94,4 +95,3 @@ class IntegrationRepository:
         with open(self.state_path, "w", encoding="utf-8") as fh:
             json.dump(self._state, fh, indent=2)
         self._dirty = False
-

@@ -138,10 +138,7 @@ class FocusEngine:
         # Use pre-computed scored articles if provided, else score digest
         if scored_articles is not None:
             # Filter to relevant unread articles
-            articles = [
-                a for a in scored_articles
-                if a.composite >= 0.2 and not self.memory.already_read(a.title)
-            ]
+            articles = [a for a in scored_articles if a.composite >= 0.2 and not self.memory.already_read(a.title)]
             brief.digest_quality = {
                 "total_articles": len(scored_articles),
                 "ai_article_ratio": _ratio(scored_articles, lambda a: a.ai_related),
@@ -157,8 +154,7 @@ class FocusEngine:
                 "project_fit_score": digest_score.project_fit_score,
             }
             articles = [
-                a for a in digest_score.articles
-                if a.composite >= 0.2 and not self.memory.already_read(a.title)
+                a for a in digest_score.articles if a.composite >= 0.2 and not self.memory.already_read(a.title)
             ]
         else:
             articles = []
@@ -242,11 +238,7 @@ class FocusEngine:
 
         # Build next_action — prefer insight over generic
         _default_action = "Review and decide if action is needed."
-        if (
-            matched_insight
-            and matched_insight.get("next_action")
-            and matched_insight["next_action"] != _default_action
-        ):
+        if matched_insight and matched_insight.get("next_action") and matched_insight["next_action"] != _default_action:
             action = matched_insight["next_action"]
         elif matched_insight and matched_insight.get("architectural_implication"):
             action = f"Evaluate implication: {matched_insight['architectural_implication']}"

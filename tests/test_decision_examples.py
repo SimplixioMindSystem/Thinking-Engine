@@ -4,7 +4,6 @@ import sys
 from dataclasses import replace
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = ROOT / "cortexos_automation_scripts" / "scripts" / "build_decision_examples.py"
 

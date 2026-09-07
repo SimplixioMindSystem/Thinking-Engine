@@ -166,16 +166,33 @@ class TestSyncEndpoints:
 
     def test_snapshot_has_required_keys(self, client):
         data = client.get("/sync/snapshot").json()
-        for key in ("profile", "active_project", "priorities", "today",
-                     "weekly_review", "decision_replay", "newsletter",
-                     "what_matters_now", "signal_top_priorities",
-                     "decision_queue", "action_ready_queue",
-                     "recurring_patterns", "unresolved_tensions",
-                     "resurfaced_now", "resurfacing_recurring_tensions",
-                     "resurfacing_weekly_review_candidates", "resurfacing_content_candidates",
-                     "content_candidates", "signal_graph", "signal_matching_counts",
-                     "recent_decisions", "insights", "signals",
-                     "working_memory", "synced_at"):
+        for key in (
+            "profile",
+            "active_project",
+            "priorities",
+            "today",
+            "weekly_review",
+            "decision_replay",
+            "newsletter",
+            "what_matters_now",
+            "signal_top_priorities",
+            "decision_queue",
+            "action_ready_queue",
+            "recurring_patterns",
+            "unresolved_tensions",
+            "resurfaced_now",
+            "resurfacing_recurring_tensions",
+            "resurfacing_weekly_review_candidates",
+            "resurfacing_content_candidates",
+            "content_candidates",
+            "signal_graph",
+            "signal_matching_counts",
+            "recent_decisions",
+            "insights",
+            "signals",
+            "working_memory",
+            "synced_at",
+        ):
             assert key in data, f"missing key: {key}"
 
     def test_snapshot_profile_shape(self, client):
@@ -205,11 +222,14 @@ class TestSyncEndpoints:
         assert isinstance(wm["todays_priorities"], list)
 
     def test_snapshot_after_decision_includes_it(self, client):
-        client.post("/context/decision", json={
-            "decision": "Use rule-based scoring for v1",
-            "reason": "Simplicity over accuracy at this stage",
-            "project": "CortexOS",
-        })
+        client.post(
+            "/context/decision",
+            json={
+                "decision": "Use rule-based scoring for v1",
+                "reason": "Simplicity over accuracy at this stage",
+                "project": "CortexOS",
+            },
+        )
         decisions = client.get("/sync/snapshot").json()["recent_decisions"]
         texts = [d["decision"] for d in decisions]
         assert "Use rule-based scoring for v1" in texts
@@ -275,7 +295,10 @@ class TestSyncEndpoints:
         assert "decision_queue" in q
         assert "action_ready_queue" in q
         assert "signal_graph" in q
-        assert any(item["signal_id"] == signal_id for item in q["decision_queue"] + q["action_ready_queue"] + q["what_matters_now"])
+        assert any(
+            item["signal_id"] == signal_id
+            for item in q["decision_queue"] + q["action_ready_queue"] + q["what_matters_now"]
+        )
 
     def test_signal_feedback_and_override(self, client):
         capture = client.post(
@@ -443,9 +466,21 @@ class TestSyncEndpoints:
         payload = {
             "date": "2026-04-21",
             "priorities": [
-                {"title": "Finish Weekly Review Loop", "why_it_matters": "Compounding weekly learning", "next_step": "Ship macOS surface"},
-                {"title": "Stabilize offline queue", "why_it_matters": "Reliable travel usage", "next_step": "Retry queued sync"},
-                {"title": "Close TestFlight feedback loop", "why_it_matters": "Improve decision quality", "next_step": "Tag acted vs not useful"},
+                {
+                    "title": "Finish Weekly Review Loop",
+                    "why_it_matters": "Compounding weekly learning",
+                    "next_step": "Ship macOS surface",
+                },
+                {
+                    "title": "Stabilize offline queue",
+                    "why_it_matters": "Reliable travel usage",
+                    "next_step": "Retry queued sync",
+                },
+                {
+                    "title": "Close TestFlight feedback loop",
+                    "why_it_matters": "Improve decision quality",
+                    "next_step": "Tag acted vs not useful",
+                },
                 {"title": "Extra item should be capped", "why_it_matters": "", "next_step": ""},
             ],
             "ignored": [
@@ -501,14 +536,17 @@ class TestSyncEndpoints:
 
 class TestIntegrationsEndpoints:
     def test_pull_context_without_network_dependencies(self, client):
-        resp = client.post("/integrations/pull", json={
-            "rss_feeds": [],
-            "github_repositories": [],
-            "github_topic": "",
-            "notion_database_id": "",
-            "notion_query": "",
-            "max_items": 3,
-        })
+        resp = client.post(
+            "/integrations/pull",
+            json={
+                "rss_feeds": [],
+                "github_repositories": [],
+                "github_topic": "",
+                "notion_database_id": "",
+                "notion_query": "",
+                "max_items": 3,
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["fetched"] == 0

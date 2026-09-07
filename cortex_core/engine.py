@@ -12,11 +12,12 @@ The real answer: "Here's what matters, why, and your next step."
 
 from __future__ import annotations
 
+import importlib.util
+import logging
+import sys
 from collections import Counter
 from datetime import UTC, datetime, timedelta
-import importlib.util
 from pathlib import Path
-import sys
 from typing import Any
 
 from cortex_core.config import CortexConfig
@@ -79,9 +80,7 @@ class CortexEngine:
         note = KnowledgeNote(**{k: v for k, v in fields.items() if k in KnowledgeNote.__dataclass_fields__})
         saved = self.store.add(note)
         signal_text = " ".join(
-            part
-            for part in (saved.title, saved.insight, saved.implication, saved.action)
-            if str(part).strip()
+            part for part in (saved.title, saved.insight, saved.implication, saved.action) if str(part).strip()
         ).strip()
         if signal_text:
             active_project = self.memory.profile.current_projects[0] if self.memory.profile.current_projects else ""
@@ -553,9 +552,7 @@ class CortexEngine:
         for item in self.items.recent(100):
             pool.append(item.to_dict())
 
-        results = self.retriever.retrieve(
-            query, pool, max_results=max_results, source_type=source_type, tags=tags
-        )
+        results = self.retriever.retrieve(query, pool, max_results=max_results, source_type=source_type, tags=tags)
         return [r.to_dict() for r in results]
 
     # ============================================================
@@ -586,6 +583,7 @@ class CortexEngine:
     def store_new_insight(self, **fields) -> dict:
         """Allow agents to store new insights."""
         from cortex_core.insights import Insight
+
         insight = Insight(**{k: v for k, v in fields.items() if k in Insight.__dataclass_fields__})
         self.insights.add(insight)
         return insight.to_dict()
@@ -775,6 +773,7 @@ class CortexEngine:
                 with open(path) as f:
                     payload = json.load(f)
             except Exception:
+                logging.getLogger(__name__).warning("Skipping an unreadable decision artifact")
                 continue
 
             if not isinstance(payload, dict):
@@ -830,14 +829,8 @@ class CortexEngine:
             if isinstance(ignored, list):
                 total_ignored_signals += len([item for item in ignored if str(item).strip()])
 
-        top_priorities = [
-            {"title": title, "count": count}
-            for title, count in priority_counter.most_common(5)
-        ]
-        top_signals = [
-            {"title": title, "count": count}
-            for title, count in signal_counter.most_common(5)
-        ]
+        top_priorities = [{"title": title, "count": count} for title, count in priority_counter.most_common(5)]
+        top_signals = [{"title": title, "count": count} for title, count in signal_counter.most_common(5)]
 
         week_start = selected[0].get("date", ordered_dates[-1])
         week_end = selected[-1].get("date", ordered_dates[-1])
@@ -851,14 +844,10 @@ class CortexEngine:
         ]
         if top_priorities:
             top = top_priorities[0]
-            summary_parts.append(
-                f"Top repeated priority: '{top['title']}' ({top['count']}x)."
-            )
+            summary_parts.append(f"Top repeated priority: '{top['title']}' ({top['count']}x).")
         if top_signals:
             top = top_signals[0]
-            summary_parts.append(
-                f"Top repeated signal: '{top['title']}' ({top['count']}x)."
-            )
+            summary_parts.append(f"Top repeated signal: '{top['title']}' ({top['count']}x).")
 
         recommendations: list[str] = []
         if top_priorities:
@@ -866,17 +855,11 @@ class CortexEngine:
                 f"Decide whether '{top_priorities[0]['title']}' should become a committed initiative."
             )
         if top_signals:
-            recommendations.append(
-                f"Investigate recurring signal '{top_signals[0]['title']}' for roadmap impact."
-            )
+            recommendations.append(f"Investigate recurring signal '{top_signals[0]['title']}' for roadmap impact.")
         if total_ignored_signals > 0:
-            recommendations.append(
-                "Keep filtering weak signals early to preserve decision clarity."
-            )
+            recommendations.append("Keep filtering weak signals early to preserve decision clarity.")
         if not recommendations:
-            recommendations.append(
-                "Collect more daily outputs before changing prioritisation strategy."
-            )
+            recommendations.append("Collect more daily outputs before changing prioritisation strategy.")
 
         surfaced = signal_matching or self.build_signal_matching_output()
         resurfaced = surfaced.get("resurfaced_now", [])
@@ -898,7 +881,8 @@ class CortexEngine:
             "resurfaced_thoughts": resurfaced[:5],
             "resurfacing_recurring_tensions": recurring_tensions[:5],
             "ignored_but_important_items": [
-                item for item in weekly_candidates
+                item
+                for item in weekly_candidates
                 if str(item.get("resurfacing_reason", "")).strip() == "ignored_but_important"
             ][:5],
             "resurfaced_content_candidates": surfaced.get("resurfacing_content_candidates", [])[:5],
@@ -1005,7 +989,13 @@ class CortexEngine:
         Source of truth: automation output artifact at
         cortexos_automation_scripts/output/newsletters/latest.json.
         """
-        latest_path = Path(__file__).resolve().parents[1] / "cortexos_automation_scripts" / "output" / "newsletters" / "latest.json"
+        latest_path = (
+            Path(__file__).resolve().parents[1]
+            / "cortexos_automation_scripts"
+            / "output"
+            / "newsletters"
+            / "latest.json"
+        )
         if not latest_path.exists():
             return None
 
@@ -1076,7 +1066,9 @@ class CortexEngine:
         strict_taste: bool = True,
     ) -> dict:
         """Generate newsletter draft through shared automation script."""
-        script_path = Path(__file__).resolve().parents[1] / "cortexos_automation_scripts" / "scripts" / "generate_newsletter.py"
+        script_path = (
+            Path(__file__).resolve().parents[1] / "cortexos_automation_scripts" / "scripts" / "generate_newsletter.py"
+        )
         if not script_path.exists():
             return {
                 "status": "error",
@@ -1096,7 +1088,7 @@ class CortexEngine:
         try:
             sys.modules[spec.name] = module
             spec.loader.exec_module(module)  # type: ignore[attr-defined]
-            run_generation = getattr(module, "run_generation")
+            run_generation = module.run_generation
             return run_generation(
                 period=period,
                 mode=mode,
@@ -1221,9 +1213,7 @@ class CortexEngine:
             blockers = list(pm.active_blockers)
 
         # Decision history: recent decision descriptions
-        recent_decisions = [
-            d.decision for d in self.decision_engine.recent_decisions(10)
-        ]
+        recent_decisions = [d.decision for d in self.decision_engine.recent_decisions(10)]
 
         # Research layer: themes
         recent_themes = list(self.memory.research.recurring_themes)
@@ -1250,6 +1240,7 @@ class CortexEngine:
     def _latest_scored_articles(self) -> list:
         """Get scored articles from the latest digest."""
         from cortex_core.scoring import evaluate_digest as _eval
+
         files = sorted(self.config.data_dir.glob(self.config.digest_glob))
         if not files:
             paths = sorted(Path(".").glob("weekly_digest_*.md"))

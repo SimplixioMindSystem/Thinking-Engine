@@ -43,4 +43,3 @@ __all__ = [
     "IntegrationService",
     "export_decisions_markdown",
 ]
-

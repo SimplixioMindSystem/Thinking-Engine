@@ -101,4 +101,3 @@ class GitHubClient:
             )
 
         return rows
-

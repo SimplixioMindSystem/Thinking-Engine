@@ -199,33 +199,35 @@ class TestIngestAPI:
     """Tests for POST /ingest/summary."""
 
     def test_ingest_returns_201(self, ingest_client):
-        r = ingest_client.post("/ingest/summary", json={
-            "content": "## Research\n\nKey finding about context engines."
-        })
+        r = ingest_client.post("/ingest/summary", json={"content": "## Research\n\nKey finding about context engines."})
         assert r.status_code == 201
 
     def test_ingest_response_shape(self, ingest_client):
-        r = ingest_client.post("/ingest/summary", json={
-            "content": "## Insight\n\nBody."
-        })
+        r = ingest_client.post("/ingest/summary", json={"content": "## Insight\n\nBody."})
         data = r.json()
         assert "items_ingested" in data
         assert "notes_created" in data
 
     def test_ingest_with_source_and_tags(self, ingest_client):
-        r = ingest_client.post("/ingest/summary", json={
-            "content": "## Topic\n\nContent.",
-            "source": "Meeting notes",
-            "tags": ["meeting", "q2"],
-        })
+        r = ingest_client.post(
+            "/ingest/summary",
+            json={
+                "content": "## Topic\n\nContent.",
+                "source": "Meeting notes",
+                "tags": ["meeting", "q2"],
+            },
+        )
         assert r.status_code == 201
         assert r.json()["items_ingested"] >= 1
 
     def test_ingest_without_notes(self, ingest_client):
-        r = ingest_client.post("/ingest/summary", json={
-            "content": "## Topic\n\nContent.",
-            "create_notes": False,
-        })
+        r = ingest_client.post(
+            "/ingest/summary",
+            json={
+                "content": "## Topic\n\nContent.",
+                "create_notes": False,
+            },
+        )
         data = r.json()
         assert data["notes_created"] == 0
         assert data["items_ingested"] >= 1
@@ -236,9 +238,9 @@ class TestIngestAPI:
         assert r.json()["items_ingested"] == 0
 
     def test_ingest_feeds_into_snapshot(self, ingest_client):
-        ingest_client.post("/ingest/summary", json={
-            "content": "## Big Finding\n\nContext engines improve focus by 3x."
-        })
+        ingest_client.post(
+            "/ingest/summary", json={"content": "## Big Finding\n\nContext engines improve focus by 3x."}
+        )
         # The ingested note should appear in the sync snapshot
         # (as part of the knowledge store, surfaced through insights or notes)
         snapshot = ingest_client.get("/sync/snapshot").json()

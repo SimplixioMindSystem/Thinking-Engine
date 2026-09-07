@@ -1,2 +1,1 @@
 """Notion integration modules."""
-

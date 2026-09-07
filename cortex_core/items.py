@@ -116,13 +116,15 @@ def extract_items_from_summary(text: str, *, source: str = "", tags: list[str] |
     # Handle preamble (text before first heading)
     preamble = parts[0].strip() if parts else ""
     if preamble:
-        items.append(Item(
-            source_type="summary",
-            title=source or "User Summary",
-            content=preamble,
-            tags=list(base_tags),
-            raw_metadata={"source": source} if source else {},
-        ))
+        items.append(
+            Item(
+                source_type="summary",
+                title=source or "User Summary",
+                content=preamble,
+                tags=list(base_tags),
+                raw_metadata={"source": source} if source else {},
+            )
+        )
 
     # Process heading groups (level, title, body)
     i = 1
@@ -139,35 +141,41 @@ def extract_items_from_summary(text: str, *, source: str = "", tags: list[str] |
 
         if len(paragraphs) <= 3:
             # Keep as one item
-            items.append(Item(
-                source_type="summary",
-                title=heading,
-                content=body,
-                section=heading,
-                tags=list(base_tags),
-                raw_metadata={"source": source} if source else {},
-            ))
-        else:
-            # One item per paragraph for long sections
-            for idx, para in enumerate(paragraphs, 1):
-                items.append(Item(
+            items.append(
+                Item(
                     source_type="summary",
-                    title=f"{heading} ({idx})",
-                    content=para,
+                    title=heading,
+                    content=body,
                     section=heading,
                     tags=list(base_tags),
                     raw_metadata={"source": source} if source else {},
-                ))
+                )
+            )
+        else:
+            # One item per paragraph for long sections
+            for idx, para in enumerate(paragraphs, 1):
+                items.append(
+                    Item(
+                        source_type="summary",
+                        title=f"{heading} ({idx})",
+                        content=para,
+                        section=heading,
+                        tags=list(base_tags),
+                        raw_metadata={"source": source} if source else {},
+                    )
+                )
 
     # Fallback: no headings at all — treat whole text as one item
     if not items and text.strip():
-        items.append(Item(
-            source_type="summary",
-            title=source or "User Summary",
-            content=text.strip(),
-            tags=list(base_tags),
-            raw_metadata={"source": source} if source else {},
-        ))
+        items.append(
+            Item(
+                source_type="summary",
+                title=source or "User Summary",
+                content=text.strip(),
+                tags=list(base_tags),
+                raw_metadata={"source": source} if source else {},
+            )
+        )
 
     return items
 

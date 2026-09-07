@@ -237,13 +237,7 @@ def score_article(
     high_signal = 1.0 if contains_keyword(title_lower, HIGH_SIGNAL_KEYWORDS) else 0.0
 
     # Weighted composite
-    composite = (
-        0.35 * project_relevance
-        + 0.25 * ai_relevance
-        + 0.20 * novelty
-        + 0.20 * actionability
-        - 0.10 * noise
-    )
+    composite = 0.35 * project_relevance + 0.25 * ai_relevance + 0.20 * novelty + 0.20 * actionability - 0.10 * noise
 
     return ArticleScore(
         title=title,

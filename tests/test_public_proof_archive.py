@@ -3,7 +3,6 @@ import json
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = ROOT / "cortexos_automation_scripts" / "scripts" / "build_public_proof_archive.py"
 

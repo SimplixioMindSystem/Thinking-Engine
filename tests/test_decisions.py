@@ -1,6 +1,5 @@
 """Tests for Decision Engine, Priorities, and Decision History."""
 
-
 import pytest
 
 from cortex_core.decisions import (

@@ -48,4 +48,3 @@ def map_github_to_signal(item: RawGitHubItem, active_projects: list[str]) -> Cor
         relevance_score=relevance,
         tags=tags,
     )
-

@@ -100,13 +100,15 @@ class DailyDecisionBrief:
         if self.priorities:
             lines.append("## Focus Today")
             for p in self.priorities:
-                lines.extend([
-                    f"### {p.rank}. {p.title}",
-                    f"**Why it matters:** {p.why_it_matters}",
-                    f"**Next step:** {p.next_step}",
-                    f"_Relevance: {p.relevance_score:.2f} | Source: {p.source}_",
-                    "",
-                ])
+                lines.extend(
+                    [
+                        f"### {p.rank}. {p.title}",
+                        f"**Why it matters:** {p.why_it_matters}",
+                        f"**Next step:** {p.next_step}",
+                        f"_Relevance: {p.relevance_score:.2f} | Source: {p.source}_",
+                        "",
+                    ]
+                )
         else:
             lines.append("_No priorities today. Run the pipeline to generate._")
             lines.append("")
@@ -171,40 +173,46 @@ class DecisionEngine:
         if scored_items:
             for item in scored_items:
                 score = item.get("composite", item.get("relevance_score", 0))
-                candidates.append(Priority(
-                    title=item.get("title", ""),
-                    why_it_matters=item.get("why_it_matters", f"Scored {score:.2f} against your profile."),
-                    next_step=item.get("next_action", "Review and extract key insight."),
-                    source="scored_item",
-                    relevance_score=score,
-                    tags=item.get("tags", []),
-                ))
+                candidates.append(
+                    Priority(
+                        title=item.get("title", ""),
+                        why_it_matters=item.get("why_it_matters", f"Scored {score:.2f} against your profile."),
+                        next_step=item.get("next_action", "Review and extract key insight."),
+                        source="scored_item",
+                        relevance_score=score,
+                        tags=item.get("tags", []),
+                    )
+                )
 
         # Score from insights (already structured)
         if insights:
             for ins in insights:
                 conf = ins.get("confidence", 0.5)
-                candidates.append(Priority(
-                    title=ins.get("title", ""),
-                    why_it_matters=ins.get("why_it_matters", ins.get("summary", "")),
-                    next_step=ins.get("next_action", ""),
-                    source="insight",
-                    relevance_score=conf,
-                    tags=ins.get("tags", []),
-                ))
+                candidates.append(
+                    Priority(
+                        title=ins.get("title", ""),
+                        why_it_matters=ins.get("why_it_matters", ins.get("summary", "")),
+                        next_step=ins.get("next_action", ""),
+                        source="insight",
+                        relevance_score=conf,
+                        tags=ins.get("tags", []),
+                    )
+                )
 
         # Score from signals
         if signals:
             for sig in signals:
                 strength = sig.get("strength", 0)
-                candidates.append(Priority(
-                    title=f"Signal: {sig.get('topic', '')}",
-                    why_it_matters=f"Detected in {sig.get('frequency', 0)} sources. Trending topic.",
-                    next_step="Investigate further — this topic is gaining traction.",
-                    source="signal",
-                    relevance_score=strength,
-                    tags=[sig.get("topic", "")],
-                ))
+                candidates.append(
+                    Priority(
+                        title=f"Signal: {sig.get('topic', '')}",
+                        why_it_matters=f"Detected in {sig.get('frequency', 0)} sources. Trending topic.",
+                        next_step="Investigate further — this topic is gaining traction.",
+                        source="signal",
+                        relevance_score=strength,
+                        tags=[sig.get("topic", "")],
+                    )
+                )
 
         # Apply profile-based re-ranking if profile is available
         if profile:
@@ -224,9 +232,7 @@ class DecisionEngine:
                     c.relevance_score *= 0.1
 
         # Apply lightweight learning from recent feedback notes.
-        useful_terms, not_useful_terms, acted_terms, stalled_terms = self._feedback_terms(
-            feedback_notes or []
-        )
+        useful_terms, not_useful_terms, acted_terms, stalled_terms = self._feedback_terms(feedback_notes or [])
         if useful_terms or not_useful_terms or acted_terms or stalled_terms:
             for c in candidates:
                 title_lower = c.title.lower()

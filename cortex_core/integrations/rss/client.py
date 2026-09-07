@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from cortex_core.integrations.schemas import RawRSSItem
@@ -30,6 +31,7 @@ class RSSClient:
             try:
                 parsed = feedparser.parse(url)
             except Exception:
+                logging.getLogger(__name__).warning("Skipping an RSS feed that could not be parsed")
                 continue
             for entry in parsed.entries[:max_items]:
                 title = _clean(getattr(entry, "title", ""))
@@ -57,4 +59,3 @@ class RSSClient:
                     )
                 )
         return rows
-

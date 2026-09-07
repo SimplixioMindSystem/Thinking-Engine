@@ -169,8 +169,6 @@ class InsightStore:
             "tags": all_tags,
             "projects": sorted(projects),
             "avg_confidence": (
-                round(sum(i.confidence for i in self._insights) / len(self._insights), 2)
-                if self._insights
-                else 0.0
+                round(sum(i.confidence for i in self._insights) / len(self._insights), 2) if self._insights else 0.0
             ),
         }

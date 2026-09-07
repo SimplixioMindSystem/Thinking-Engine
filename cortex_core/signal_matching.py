@@ -275,7 +275,7 @@ class SignalRecord:
         return data
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "SignalRecord":
+    def from_dict(cls, data: dict[str, Any]) -> SignalRecord:
         payload = dict(data)
         payload["scores"] = SignalScores(**payload.get("scores", {}))
         return cls(**{k: v for k, v in payload.items() if k in cls.__dataclass_fields__})
@@ -413,9 +413,7 @@ class SignalMatcher:
             existing_enriched = self.cocoindex_pipeline.get_enriched_signal(raw_upsert.raw_signal_id)
 
             reuse_existing = bool(
-                existing is not None
-                and raw_upsert.changed is False
-                and existing_enriched is not None
+                existing is not None and raw_upsert.changed is False and existing_enriched is not None
             )
 
             if reuse_existing:
@@ -644,9 +642,10 @@ class SignalMatcher:
         for rec in reversed(self._records[-80:]):
             if rec.signal_type != "decision":
                 continue
-            if jaccard(topic_set, set(rec.topics)) >= 0.4:
-                if not any(term in rec.text.lower() for term in ("stop", "drop", "cancel", "avoid")):
-                    return True
+            if jaccard(topic_set, set(rec.topics)) >= 0.4 and not any(
+                term in rec.text.lower() for term in ("stop", "drop", "cancel", "avoid")
+            ):
+                return True
         return False
 
     def _sensitivity(self, text: str, *, tags: list[str]) -> str:
@@ -674,7 +673,9 @@ class SignalMatcher:
         days_old = max(0.0, (now - captured).total_seconds() / 86400.0)
 
         recency = clamp01(math.exp(-days_old / 7.0))
-        strategic = 1.0 if rec.linked_projects else (0.7 if rec.signal_type in {"decision", "task", "tension"} else 0.45)
+        strategic = (
+            1.0 if rec.linked_projects else (0.7 if rec.signal_type in {"decision", "task", "tension"} else 0.45)
+        )
         emotional = rec.scores.emotional_intensity / 100.0
         blockage = 1.0 if rec.signal_type in {"tension", "question"} or rec.dependencies else 0.2
         source_weight = SOURCE_WEIGHTS.get(rec.signal_type, 0.6)
@@ -708,7 +709,9 @@ class SignalMatcher:
         public_safety = 1.0 if rec.sensitivity in {"public_safe", "public_ready"} else 0.0
         usefulness = clamp01((importance / 100.0 + action_ready / 100.0) / 2.0)
         originality = clamp01(1.0 - rec.recurrence_likelihood * 0.6)
-        publishability = score100(0.45 * public_safety + 0.25 * usefulness + 0.20 * rec.clarity_level + 0.10 * originality)
+        publishability = score100(
+            0.45 * public_safety + 0.25 * usefulness + 0.20 * rec.clarity_level + 0.10 * originality
+        )
 
         staleness = score100(clamp01(days_old / 14.0))
 
@@ -782,9 +785,7 @@ class SignalMatcher:
             return False
         if self._is_suppressed(rec, now):
             return False
-        if rec.feedback_counts.get("marked_irrelevant", 0) > 0:
-            return False
-        return True
+        return not rec.feedback_counts.get("marked_irrelevant", 0) > 0
 
     def _resurfacing_score(self, rec: SignalRecord, rank_score: float) -> float:
         acted = rec.feedback_counts.get("acted_on", 0)
@@ -936,7 +937,9 @@ class SignalMatcher:
                 "last_snoozed_at": rec.last_snoozed_at,
                 "suppressed_until": rec.suppressed_until,
                 "resurfacing_confidence": rec.resurfacing_confidence,
-                "resurfacing_mode": self._resurfacing_mode_from_horizon(rec.resurfacing_time_horizon or "when_relevant"),
+                "resurfacing_mode": self._resurfacing_mode_from_horizon(
+                    rec.resurfacing_time_horizon or "when_relevant"
+                ),
                 "resurfacing_explanation": self._resurfacing_explanation(reason),
             }
 
@@ -953,9 +956,15 @@ class SignalMatcher:
                 content_candidates.append(payload)
 
         resurfaced_now.sort(key=lambda row: (row.get("resurfacing_confidence", 0.0), row["rank_score"]), reverse=True)
-        recurring_tensions.sort(key=lambda row: (row.get("resurfacing_confidence", 0.0), row["rank_score"]), reverse=True)
-        weekly_review_candidates.sort(key=lambda row: (row.get("resurfacing_confidence", 0.0), row["rank_score"]), reverse=True)
-        content_candidates.sort(key=lambda row: (row.get("resurfacing_confidence", 0.0), row["rank_score"]), reverse=True)
+        recurring_tensions.sort(
+            key=lambda row: (row.get("resurfacing_confidence", 0.0), row["rank_score"]), reverse=True
+        )
+        weekly_review_candidates.sort(
+            key=lambda row: (row.get("resurfacing_confidence", 0.0), row["rank_score"]), reverse=True
+        )
+        content_candidates.sort(
+            key=lambda row: (row.get("resurfacing_confidence", 0.0), row["rank_score"]), reverse=True
+        )
 
         return {
             "resurfaced_now": resurfaced_now[: QUEUE_LIMITS["resurfaced_now"]],
@@ -1007,22 +1016,23 @@ class SignalMatcher:
 
         top_priorities = self._build_top_priorities(ranked_items)
         decision_queue = [
-            item for item in ranked_items
-            if item["signal_type"] in {"decision", "question", "tension"}
-            and item["scores"]["decision_readiness"] >= 55
+            item
+            for item in ranked_items
+            if item["signal_type"] in {"decision", "question", "tension"} and item["scores"]["decision_readiness"] >= 55
         ][: QUEUE_LIMITS["decision_queue"]]
-        action_ready_queue = [
-            item for item in ranked_items
-            if item["scores"]["action_readiness"] >= 55
-        ][: QUEUE_LIMITS["action_ready_queue"]]
+        action_ready_queue = [item for item in ranked_items if item["scores"]["action_readiness"] >= 55][
+            : QUEUE_LIMITS["action_ready_queue"]
+        ]
 
         recurring_patterns = self._recurring_patterns(active)
         unresolved_tensions = [
-            item for item in ranked_items
+            item
+            for item in ranked_items
             if item["signal_type"] == "tension" and item["scores"]["decision_readiness"] >= 45
         ][: QUEUE_LIMITS["unresolved_tensions"]]
         content_candidates = [
-            item for item in ranked_items
+            item
+            for item in ranked_items
             if item["signal_type"] in {"idea", "reflection", "content_seed", "thought"}
             and item["sensitivity"] in {"public_safe", "public_ready"}
             and item["scores"]["publishability"] >= 55
@@ -1107,7 +1117,9 @@ class SignalMatcher:
                     "topic": topic,
                     "count": len(topic_records),
                     "unresolved_count": unresolved,
-                    "avg_importance": round(sum(rec.scores.importance for rec in topic_records) / len(topic_records), 2),
+                    "avg_importance": round(
+                        sum(rec.scores.importance for rec in topic_records) / len(topic_records), 2
+                    ),
                     "sample_signals": [self._title(rec.text) for rec in topic_records[:3]],
                 }
             )
@@ -1131,7 +1143,7 @@ class SignalMatcher:
         for idx, left in enumerate(recent):
             left_tokens = set(tokenize(left.text))
             left_topics = set(left.topics)
-            for right in recent[idx + 1:]:
+            for right in recent[idx + 1 :]:
                 right_tokens = set(tokenize(right.text))
                 right_topics = set(right.topics)
                 similarity = max(jaccard(left_tokens, right_tokens), jaccard(left_topics, right_topics))

@@ -8,8 +8,8 @@ Minimal pull/export endpoints so CortexOS can:
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
 from fastapi import APIRouter
+from pydantic import BaseModel, Field
 
 from cortex_core.api.server import get_engine
 

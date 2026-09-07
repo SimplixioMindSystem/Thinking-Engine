@@ -34,8 +34,12 @@ CANONICAL_FILES: dict[str, list[str]] = {
     "iPad_13": ["01_focus.png", "02_decide.png", "03_capture.png", "04_settings.png"],
     "iPad_12.9": ["01_focus.png", "02_decide.png", "03_capture.png", "04_settings.png"],
     "Mac": [
-        "01_focus.png", "02_weekly_review.png", "03_decision_replay.png",
-        "04_memory.png", "05_decisions.png", "06_settings.png",
+        "01_focus.png",
+        "02_weekly_review.png",
+        "03_decision_replay.png",
+        "04_memory.png",
+        "05_decisions.png",
+        "06_settings.png",
     ],
 }
 
@@ -43,8 +47,12 @@ RAW_REQUIRED: dict[str, list[str]] = {
     "iphone_raw": ["01_focus.png", "02_decide.png", "03_capture.png", "04_settings.png"],
     "ipad_raw": ["01_focus.png", "02_decide.png", "03_capture.png", "04_settings.png"],
     "mac_raw": [
-        "01_focus.png", "02_weekly_review.png", "03_decision_replay.png",
-        "04_memory.png", "05_decisions.png", "06_settings.png",
+        "01_focus.png",
+        "02_weekly_review.png",
+        "03_decision_replay.png",
+        "04_memory.png",
+        "05_decisions.png",
+        "06_settings.png",
     ],
 }
 

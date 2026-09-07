@@ -26,4 +26,3 @@ def map_rss_to_signal(item: RawRSSItem, active_projects: list[str]) -> CortexSig
         relevance_score=relevance,
         tags=["rss", "signal"],
     )
-

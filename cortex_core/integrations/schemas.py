@@ -110,4 +110,3 @@ class CortexContextItem:
         payload = asdict(self)
         payload["content"] = _compact(payload["content"], limit=800)
         return payload
-

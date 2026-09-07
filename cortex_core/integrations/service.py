@@ -9,6 +9,7 @@ from cortex_core.integrations.notion.sync import NotionSync
 from cortex_core.integrations.repositories import IntegrationRepository
 from cortex_core.integrations.rss.sync import RSSSync
 
+
 class IntegrationService:
     """Runs minimal MVP sync flows: RSS, GitHub repos, and Notion import."""
 

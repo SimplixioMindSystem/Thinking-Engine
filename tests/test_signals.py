@@ -1,6 +1,5 @@
 """Tests for Signal Detection and SignalStore."""
 
-
 import pytest
 
 from cortex_core.signals import (
@@ -114,18 +113,22 @@ class TestSignalStore:
 
     def test_active_vs_archived(self, store_path):
         store = SignalStore(store_path)
-        store.update_signals([
-            Signal(topic="active", frequency=3, strength=0.3, status="emerging"),
-            Signal(topic="old", frequency=1, strength=0.1, status="archived"),
-        ])
+        store.update_signals(
+            [
+                Signal(topic="active", frequency=3, strength=0.3, status="emerging"),
+                Signal(topic="old", frequency=1, strength=0.1, status="archived"),
+            ]
+        )
         assert len(store.active_signals()) == 1
 
     def test_confirmed_signals(self, store_path):
         store = SignalStore(store_path)
-        store.update_signals([
-            Signal(topic="confirmed", frequency=6, strength=0.6, status="confirmed"),
-            Signal(topic="emerging", frequency=3, strength=0.3, status="emerging"),
-        ])
+        store.update_signals(
+            [
+                Signal(topic="confirmed", frequency=6, strength=0.6, status="confirmed"),
+                Signal(topic="emerging", frequency=3, strength=0.3, status="emerging"),
+            ]
+        )
         assert len(store.confirmed_signals()) == 1
 
     def test_persistence(self, store_path):

@@ -215,9 +215,21 @@ class TestEngineDecisionReplay:
         payload = {
             "date": "2026-04-21",
             "priorities": [
-                {"title": "Finish Weekly Review Loop", "why_it_matters": "Compounding weekly learning", "next_step": "Ship macOS surface"},
-                {"title": "Stabilize offline queue", "why_it_matters": "Reliable travel usage", "next_step": "Retry queued sync"},
-                {"title": "Close TestFlight feedback loop", "why_it_matters": "Improve decision quality", "next_step": "Tag acted vs not useful"},
+                {
+                    "title": "Finish Weekly Review Loop",
+                    "why_it_matters": "Compounding weekly learning",
+                    "next_step": "Ship macOS surface",
+                },
+                {
+                    "title": "Stabilize offline queue",
+                    "why_it_matters": "Reliable travel usage",
+                    "next_step": "Retry queued sync",
+                },
+                {
+                    "title": "Close TestFlight feedback loop",
+                    "why_it_matters": "Improve decision quality",
+                    "next_step": "Tag acted vs not useful",
+                },
                 {"title": "Extra item should be capped", "why_it_matters": "", "next_step": ""},
             ],
             "ignored": [

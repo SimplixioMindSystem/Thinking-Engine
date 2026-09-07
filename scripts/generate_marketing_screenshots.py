@@ -23,11 +23,7 @@ ASSETS_DIR = ROOT / "CortexOSApp" / "store_assets"
 RAW_DIR = ROOT / "CortexOSApp" / "screenshot_results"
 OUTPUT_DIR = ASSETS_DIR / "marketing"
 ALLOW_SCREENSHOT_FALLBACK = os.getenv("ALLOW_SCREENSHOT_FALLBACK", "0").strip().lower() in {"1", "true", "yes"}
-REQUESTED_DEVICES = {
-    item.strip()
-    for item in os.getenv("STORE_ASSET_DEVICES", "").split(",")
-    if item.strip()
-}
+REQUESTED_DEVICES = {item.strip() for item in os.getenv("STORE_ASSET_DEVICES", "").split(",") if item.strip()}
 
 # SimpliXio brand colors: calm ink, sea glass, and restrained warm accents.
 BRAND_GRADIENT_START = (8, 18, 30)
@@ -557,11 +553,7 @@ def create_mac_screenshot(raw_path, marketing_info, output_size, variant=0):
     sub_font = get_font(sub_font_size, style="body")
     sub_lines = wrap_text(subheadline, sub_font, text_max_width) if subheadline else []
     sub_line_height = int(sub_font_size * 1.35)
-    block_height = (
-        len(lines) * headline_line_height
-        + (30 if sub_lines else 0)
-        + len(sub_lines) * sub_line_height
-    )
+    block_height = len(lines) * headline_line_height + (30 if sub_lines else 0) + len(sub_lines) * sub_line_height
     text_y = max(int(height * 0.12), (height - block_height) // 2)
 
     for i, line in enumerate(lines):

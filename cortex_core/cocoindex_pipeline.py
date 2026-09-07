@@ -121,12 +121,8 @@ class CocoIndexSignalPipeline:
                 )
                 """
             )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_raw_source ON raw_signals(source_type, source_id)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_enriched_raw_signal_id ON enriched_signals(raw_signal_id)"
-            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_raw_source ON raw_signals(source_type, source_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_enriched_raw_signal_id ON enriched_signals(raw_signal_id)")
 
     @staticmethod
     def _raw_signal_id(event: dict[str, Any]) -> str:
@@ -377,7 +373,7 @@ class CocoIndexSignalPipeline:
                     contradiction = ?, trace_metadata_json = ?, enriched_hash = ?, updated_at = ?
                 WHERE raw_signal_id = ?
                 """,
-                payload[0:20] + (raw_signal_id,),
+                (*payload[0:20], raw_signal_id),
             )
             return {
                 "status": "updated",

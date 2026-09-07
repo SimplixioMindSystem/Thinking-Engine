@@ -54,4 +54,3 @@ class GitHubSync:
             "signals": signals,
             "context_items": [],
         }
-

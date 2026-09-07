@@ -132,7 +132,10 @@ class WhyEngine:
 
         # 5. Composite confidence
         confidence = _compute_confidence(
-            goal_overlap, interest_overlap, project_overlap, noise_overlap,
+            goal_overlap,
+            interest_overlap,
+            project_overlap,
+            noise_overlap,
         )
 
         # 6. Triage: act_now / watch / ignore
@@ -142,10 +145,16 @@ class WhyEngine:
         return DecisionResult(
             summary=_build_summary(item),
             why_it_matters=_why_it_matters(
-                item, goal_overlap, interest_overlap, project_overlap, context,
+                item,
+                goal_overlap,
+                interest_overlap,
+                project_overlap,
+                context,
             ),
             impact_on_active_project=_project_impact(
-                item, project_overlap, context,
+                item,
+                project_overlap,
+                context,
             ),
             contradiction_or_confirmation=stance,
             recommended_action=_recommended_action(triage, item, context),
@@ -195,10 +204,24 @@ def _detect_stance(
 
     # Check for contradiction signal words in content
     contrary_signals = {
-        "however", "but", "contrary", "wrong", "incorrect",
-        "overestimated", "underestimated", "failed", "disproven",
-        "flawed", "misleading", "myth", "debunked", "reconsidered",
-        "pivot", "reversal", "abandoned", "deprecated",
+        "however",
+        "but",
+        "contrary",
+        "wrong",
+        "incorrect",
+        "overestimated",
+        "underestimated",
+        "failed",
+        "disproven",
+        "flawed",
+        "misleading",
+        "myth",
+        "debunked",
+        "reconsidered",
+        "pivot",
+        "reversal",
+        "abandoned",
+        "deprecated",
     }
     content_tokens = set(tokenize(content.lower())) if content else set()
     has_contrary = bool(content_tokens & contrary_signals)
@@ -217,12 +240,7 @@ def _compute_confidence(
     noise_overlap: float,
 ) -> float:
     """Weighted confidence score in [0, 1]."""
-    raw = (
-        0.40 * goal_overlap
-        + 0.25 * interest_overlap
-        + 0.25 * project_overlap
-        - 0.30 * noise_overlap
-    )
+    raw = 0.40 * goal_overlap + 0.25 * interest_overlap + 0.25 * project_overlap - 0.30 * noise_overlap
     return max(0.0, min(1.0, raw))
 
 
@@ -270,9 +288,7 @@ def _why_it_matters(
 
     if project_overlap > 0.2:
         reasons.append(
-            f"Relevant to {context.current_projects[0]}"
-            if context.current_projects
-            else "Relevant to active project"
+            f"Relevant to {context.current_projects[0]}" if context.current_projects else "Relevant to active project"
         )
 
     if interest_overlap > 0.2:
@@ -343,10 +359,7 @@ def _recommended_action(
 def _matched_items(item: SourceItem, candidates: list[str]) -> list[str]:
     """Return candidates whose tokens overlap with the item."""
     item_tokens = _item_tokens(item)
-    return [
-        c for c in candidates
-        if set(tokenize(c)) & item_tokens
-    ]
+    return [c for c in candidates if set(tokenize(c)) & item_tokens]
 
 
 def _derive_tags(item: SourceItem, context: EvaluationContext) -> list[str]:
