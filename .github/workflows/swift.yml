@@ -10,14 +10,14 @@ on:
     branches: [main, develop]
     paths:
       - 'CortexOSApp/**'
-      - 'Tests/**'
+      - 'tests/CortexOSKitTests/**'
       - 'Package.swift'
       - '.github/workflows/swift.yml'
   pull_request:
     branches: [main, develop]
     paths:
       - 'CortexOSApp/**'
-      - 'Tests/**'
+      - 'tests/CortexOSKitTests/**'
       - 'Package.swift'
       - '.github/workflows/swift.yml'
 
